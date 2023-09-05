@@ -1,0 +1,186 @@
+FUNCTION FC 1112 : VOID
+TITLE =FC Position Comparation
+AUTHOR : 'K.T.'
+VERSION : 0.3
+
+
+VAR_INPUT
+  I_Setpoint : INT ;	//Setpoint
+  I_Actual_Pos : INT ;	//Actual Position
+  I_Tolerance : INT ;	//Tolerance value for setpoint
+  I_Mode : INT ;	//Mode: Lower or Equal(1); Greater or Equal(2); Both Funtion(3);
+END_VAR
+VAR_OUTPUT
+  O_Slow_Mode_LE_active : BOOL ;	//Slow mode active
+  O_Slow_Mode_GE_active : BOOL ;	//Slow mode active
+  O_Pos_Reached : BOOL ;	//Position Reached
+  O_Inverter : BOOL ;	//Inverter bit
+END_VAR
+VAR_TEMP
+  t_Slow_mode : INT ;	
+  t_Pos_calc_plus : INT ;	
+  t_Pos_calc_minus : INT ;	
+  t_LE : BOOL ;	
+  t_GE : BOOL ;	
+  t_Pos_LE_OK : BOOL ;	
+  t_Pos_GE_OK : BOOL ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Lower or Equal activated
+
+      O(    ; 
+      L     #I_Mode; 
+      L     1; 
+      ==I   ; 
+      )     ; 
+      O(    ; 
+      L     #I_Mode; 
+      L     3; 
+      ==I   ; 
+      )     ; 
+      =     #t_LE; 
+NETWORK
+TITLE =Greater or Equal activated
+
+      O(    ; 
+      L     #I_Mode; 
+      L     2; 
+      ==I   ; 
+      )     ; 
+      O(    ; 
+      L     #I_Mode; 
+      L     3; 
+      ==I   ; 
+      )     ; 
+      =     #t_GE; 
+NETWORK
+TITLE =
+
+NETWORK
+TITLE =Slow mode value
+
+      L     400; 
+      T     #t_Slow_mode; 
+      NOP   0; 
+NETWORK
+TITLE =Position calc minus
+
+      L     #I_Setpoint; 
+      L     #t_Slow_mode; 
+      -I    ; 
+      T     #t_Pos_calc_minus; 
+NETWORK
+TITLE =Position calc plus
+
+      L     #I_Setpoint; 
+      L     #t_Slow_mode; 
+      +I    ; 
+      T     #t_Pos_calc_plus; 
+NETWORK
+TITLE =Slow Mode LE activation
+
+      U     #t_LE; 
+      U(    ; 
+      L     #I_Actual_Pos; 
+      L     #t_Pos_calc_minus; 
+      >=I   ; 
+      )     ; 
+      U(    ; 
+      L     #I_Actual_Pos; 
+      L     #t_Pos_calc_plus; 
+      <=I   ; 
+      )     ; 
+      =     #O_Slow_Mode_LE_active; 
+NETWORK
+TITLE =Slow Mode GE activation
+
+      U     #t_GE; 
+      U(    ; 
+      L     #I_Actual_Pos; 
+      L     #t_Pos_calc_plus; 
+      <=I   ; 
+      )     ; 
+      U(    ; 
+      L     #I_Actual_Pos; 
+      L     #t_Pos_calc_minus; 
+      >=I   ; 
+      )     ; 
+      =     #O_Slow_Mode_GE_active; 
+NETWORK
+TITLE =Position calc minus
+
+      L     #I_Setpoint; 
+      L     #I_Tolerance; 
+      +I    ; 
+      T     #t_Pos_calc_plus; 
+NETWORK
+TITLE =Position calc minus
+
+      L     #I_Setpoint; 
+      L     #I_Tolerance; 
+      -I    ; 
+      T     #t_Pos_calc_minus; 
+NETWORK
+TITLE =Position Setpoint LE reached
+
+      U     #t_LE; 
+      U(    ; 
+      L     #I_Actual_Pos; 
+      L     #I_Setpoint; 
+      >=I   ; 
+      )     ; 
+      U(    ; 
+      L     #I_Actual_Pos; 
+      L     #t_Pos_calc_plus; 
+      <=I   ; 
+      )     ; 
+      =     #t_Pos_LE_OK; 
+NETWORK
+TITLE =Position Setpoint GE reached
+
+      U     #t_GE; 
+      U(    ; 
+      L     #I_Actual_Pos; 
+      L     #I_Setpoint; 
+      <=I   ; 
+      )     ; 
+      U(    ; 
+      L     #I_Actual_Pos; 
+      L     #t_Pos_calc_minus; 
+      >=I   ; 
+      )     ; 
+      =     #t_Pos_GE_OK; 
+NETWORK
+TITLE =Position reached Output
+
+      U(    ; 
+      O     #t_Pos_LE_OK; 
+      ON    #t_LE; 
+      )     ; 
+      U(    ; 
+      O     #t_Pos_GE_OK; 
+      ON    #t_GE; 
+      )     ; 
+      O     ; 
+      U     #t_LE; 
+      U     #t_GE; 
+      U(    ; 
+      O     #t_Pos_LE_OK; 
+      O     #t_Pos_GE_OK; 
+      )     ; 
+      =     #O_Pos_Reached; 
+NETWORK
+TITLE =Save BR
+
+      U     #O_Pos_Reached; 
+      SAVE  ; 
+NETWORK
+TITLE =Inverter bit
+
+      L     #I_Actual_Pos; 
+      L     #I_Setpoint; 
+      >I    ; 
+      =     #O_Inverter; 
+END_FUNCTION
+

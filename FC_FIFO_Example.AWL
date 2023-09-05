@@ -1,0 +1,159 @@
+FUNCTION FC 949 : VOID
+TITLE =DATENSATZ IM FIFO
+//Autor:   K.T.
+//Version: 0.4
+AUTHOR : 'K.T.'
+VERSION : 0.4
+
+
+VAR_INPUT
+  Datenpruefung : BOOL ;	//Daten pruefung start
+  DB_Moby : INT ;	//DB Moby Nummer
+  Start_Byte_WT_Num_1 : INT ;	//Start byte WT Nummer
+  DB_FIFO : INT ;	//DB FIFO Nummer
+  Start_Byte_WT_Num_2 : INT ;	//Start byte WT Nummer
+  Offset_Pos_FIFO : INT ;	//Offset Pos1..i FIFO
+  Laenge_FIFO : INT ;	//Laenge FIFO
+END_VAR
+VAR_OUTPUT
+  Datensatz_im_FIFO : BOOL ;	//Datensatz im FIFO
+  Keine_WT_Nummer : BOOL ;	//Keine WT Nummer
+END_VAR
+VAR_TEMP
+  t_Datenpruefung : BOOL ;	
+  t_Datensatz_im_FIFO : BOOL ;	
+  t_Vergl_1_ok : BOOL ;	
+  t_Vergl_2_ok : BOOL ;	
+  t_Vergl_1_null : BOOL ;	
+  t_Vergl_2_null : BOOL ;	
+  t_Vergleich_ok : BOOL ;	
+  t_Vergleich_null : BOOL ;	
+  t_DB_Moby : WORD ;	
+  t_DB_FIFO : WORD ;	
+  t_WT_Num_Moby_W : WORD ;	
+  t_WT_Num_Moby_DW : DWORD ;	
+  t_Laenge : INT ;	
+  t_Byte_DB_Moby : INT ;	
+  t_Byte_DB_FIFO : INT ;	
+  t_Schleife : INT ;	
+  t_Offset : INT ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Eingaenge
+
+
+      U     #Datenpruefung; 
+      =     #t_Datenpruefung; 
+
+      CLR   ; 
+      =     #t_Vergleich_ok; 
+      =     #t_Vergleich_null; 
+
+NETWORK
+TITLE =Werte
+
+
+      L     #DB_Moby; // Moby DB Nummer
+      T     #t_DB_Moby; 
+
+      L     #DB_FIFO; // FIFO DB Nummer
+      T     #t_DB_FIFO; 
+
+      L     #Start_Byte_WT_Num_1; // WT Nummer byte im DB Moby
+      T     #t_Byte_DB_Moby; 
+
+      L     #Start_Byte_WT_Num_2; // WT Nummer byte im DB Puffer
+      T     #t_Byte_DB_FIFO; 
+
+      L     #Offset_Pos_FIFO; // Offset im DB Puffer 
+      T     #t_Offset; 
+
+      L     #Laenge_FIFO; // Laenge FIFO Pos
+      T     #t_Laenge; 
+
+
+NETWORK
+TITLE =DB Moby
+
+      U     #t_Datenpruefung; 
+      SPBN  Ende; 
+
+      AUF   DB [#t_DB_Moby]; 
+
+      L     #t_Byte_DB_Moby; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     DBD [AR1,P#0.0]; 
+      T     #t_WT_Num_Moby_DW; 
+      L     DBW [AR1,P#4.0]; 
+      T     #t_WT_Num_Moby_W; 
+
+      L     #t_WT_Num_Moby_DW; 
+      L     DW#16#20202020; 
+      ==D   ; 
+      =     #t_Vergl_1_null; 
+
+      L     #t_WT_Num_Moby_W; 
+      L     W#16#2020; 
+      ==I   ; 
+      =     #t_Vergl_2_null; 
+
+      U     #t_Vergl_1_null; 
+      U     #t_Vergl_2_null; 
+      =     #t_Vergleich_null; 
+
+NETWORK
+TITLE =DB FIFO
+
+
+      AUF   DB [#t_DB_FIFO]; 
+
+      L     #t_Laenge; 
+SC:   T     #t_Schleife; 
+
+      L     #t_Byte_DB_FIFO; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     DBD [AR1,P#0.0]; 
+      L     #t_WT_Num_Moby_DW; 
+      ==D   ; 
+      =     #t_Vergl_1_ok; 
+
+      L     DBW [AR1,P#4.0]; 
+      L     #t_WT_Num_Moby_W; 
+      ==I   ; 
+      =     #t_Vergl_2_ok; 
+
+      U     #t_Vergl_1_ok; 
+      U     #t_Vergl_2_ok; 
+      =     #t_Vergleich_ok; 
+      SPB   EnSC; 
+
+      L     #t_Byte_DB_FIFO; 
+      L     #t_Offset; 
+      +I    ; 
+      T     #t_Byte_DB_FIFO; 
+
+      L     #t_Schleife; 
+      LOOP  SC; 
+
+EnSC: NOP   0; 
+Ende: NOP   0; 
+
+NETWORK
+TITLE =Ausgaenge
+
+
+      U     #t_Datenpruefung; 
+      U     #t_Vergleich_ok; 
+      =     #Datensatz_im_FIFO; 
+
+      U     #t_Datenpruefung; 
+      U     #t_Vergleich_null; 
+      =     #Keine_WT_Nummer; 
+
+END_FUNCTION
+

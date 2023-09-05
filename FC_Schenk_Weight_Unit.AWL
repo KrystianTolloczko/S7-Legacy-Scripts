@@ -1,0 +1,193 @@
+FUNCTION FC 902 : VOID
+TITLE =Schenk Profibus (Frame Fixed 1)
+//AUTOR: KT
+AUTHOR : 'K.T.'
+VERSION : 2.1
+
+
+VAR_INPUT
+  PI : INT ;	//Adress Input
+  PQ : INT ;	//Adress Input
+  DP_ERROR : BOOL ;	//Reset outputs in case of Profibus error
+END_VAR
+VAR_OUTPUT
+  WEIGHT_1 : REAL ;	//Gros weight rounded scale 1
+  WEIGHT_2 : REAL ;	//Gros weight rounded scale 2
+  WEIGHT_3 : REAL ;	//Gros weight rounded scale 3
+  STATUS : DWORD ;	//Status scale 1-2-3
+END_VAR
+VAR_TEMP
+  STA_VAL1 : REAL ;	//Value Channel 1
+  STA_VAL2 : REAL ;	//Value Channel 2
+  STA_VAL3 : REAL ;	//Value Channel 3
+  STA_VAL4 : REAL ;	//Value Channel 4
+  STA_VAL5 : REAL ;	//Value Channel 5
+  STA_VAL6 : REAL ;	//Value Channel 6
+  STA_VAL7 : REAL ;	//Value Channel 7
+  STA_VAL8 : REAL ;	//Value Channel 8
+  IN_RESERV : ARRAY  [0 .. 27 ] OF //Next adress from 60!!!
+  BYTE ;	
+  CMD_CB : WORD ;	//CB
+  CMD_COMM : WORD ;	//COMM
+  CMD_ID1 : WORD ;	//ID
+  CMD_PRESET1 : DINT ;	//Preset 1
+  CMD_ID2 : WORD ;	//ID
+  CMD_PRESET2 : DINT ;	//Preset 2
+  CMD_FIX_ID : WORD ;	//FIX=ID (0x1)
+  CMD_ID3 : WORD ;	//ID
+  CMD_PRESET3 : DINT ;	//Preset 3
+  CMD_ID4 : WORD ;	//ID
+  CMD_PRESET4 : DINT ;	//Preset 4
+  CMD_UNUSED : WORD ;	//Unused area (0x0)
+  SPARE : ARRAY  [0 .. 8 ] OF BYTE ;	
+  WEIGHT_SUM1 : REAL ;	
+  WEIGHT_SUM2 : REAL ;	
+  WEIGHT_SUM3 : REAL ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Read telegram from Schenk
+
+      L     #PI; 
+      SLD   3; 
+      LAR1  ; 
+      L     PED [AR1,P#0.0]; 
+      T     #STA_VAL1; 
+      L     PED [AR1,P#4.0]; 
+      T     #STA_VAL2; 
+      L     PED [AR1,P#8.0]; 
+      T     #STA_VAL3; 
+      L     PED [AR1,P#12.0]; 
+      T     #STA_VAL4; 
+
+      L     PED [AR1,P#16.0]; 
+      T     #STA_VAL5; 
+      L     PED [AR1,P#20.0]; 
+      T     #STA_VAL6; 
+      L     PED [AR1,P#24.0]; 
+      T     #STA_VAL7; 
+      L     PED [AR1,P#28.0]; 
+      T     #STA_VAL8; 
+NETWORK
+TITLE =DP Error
+
+      UN    #DP_ERROR; 
+      SPB   m001; 
+      L     0.000000e+000; 
+      T     #STA_VAL1; 
+      T     #STA_VAL2; 
+      T     #STA_VAL3; 
+      T     #STA_VAL4; 
+      T     #STA_VAL5; 
+      T     #STA_VAL6; 
+      T     #STA_VAL7; 
+      T     #STA_VAL8; 
+m001: NOP   0; 
+NETWORK
+TITLE =Initialisation of write struct
+
+      L     W#16#0; 
+      T     #CMD_CB; 
+      T     #CMD_COMM; 
+      T     #CMD_ID1; 
+      T     #CMD_PRESET1; 
+      T     #CMD_ID2; 
+      T     #CMD_PRESET2; 
+      T     #CMD_ID3; 
+      T     #CMD_PRESET3; 
+      T     #CMD_ID4; 
+      T     #CMD_PRESET4; 
+      T     #CMD_UNUSED; 
+
+NETWORK
+TITLE =Load Fix=ID (0x1)
+
+      L     W#16#1; 
+      T     #CMD_FIX_ID; 
+
+NETWORK
+TITLE =Write telegram to Schenk
+
+      L     #PQ; 
+      SLD   3; 
+      LAR2  ; 
+      L     #CMD_CB; 
+      T     PAW [AR2,P#0.0]; 
+      L     #CMD_COMM; 
+      T     PAW [AR2,P#2.0]; 
+      L     #CMD_ID1; 
+      T     PAW [AR2,P#4.0]; 
+      L     #CMD_PRESET1; 
+      T     PAD [AR2,P#6.0]; 
+      L     #CMD_ID2; 
+      T     PAW [AR2,P#10.0]; 
+      L     #CMD_PRESET2; 
+      T     PAD [AR2,P#12.0]; 
+
+      L     #CMD_FIX_ID; 
+      T     PAW [AR2,P#16.0]; 
+      L     #CMD_ID3; 
+      T     PAW [AR2,P#18.0]; 
+      L     #CMD_PRESET3; 
+      T     PAD [AR2,P#20.0]; 
+      L     #CMD_ID4; 
+      T     PAW [AR2,P#24.0]; 
+      L     #CMD_PRESET4; 
+      T     PAD [AR2,P#26.0]; 
+      L     #CMD_UNUSED; 
+      T     PAW [AR2,P#30.0]; 
+
+NETWORK
+TITLE =Avarage weight value 1 (channels 1-3)
+
+      L     0.000000e+000; 
+      T     #WEIGHT_SUM1; 
+
+
+      L     #STA_VAL1; 
+      L     #STA_VAL2; 
+      +R    ; 
+      T     #WEIGHT_SUM1; 
+
+      L     #STA_VAL3; 
+      L     #WEIGHT_SUM1; 
+      +R    ; 
+      T     #WEIGHT_SUM1; 
+
+NETWORK
+TITLE =Avarage weight value 2 (channels 4-6)
+
+      L     0.000000e+000; 
+      T     #WEIGHT_SUM2; 
+
+
+      L     #STA_VAL4; 
+      L     #STA_VAL5; 
+      +R    ; 
+      T     #WEIGHT_SUM2; 
+
+      L     #STA_VAL6; 
+      L     #WEIGHT_SUM2; 
+      +R    ; 
+      T     #WEIGHT_SUM2; 
+
+NETWORK
+TITLE =Avarage weight value 3 (channels 7-8)
+
+      L     0.000000e+000; 
+      T     #WEIGHT_SUM3; 
+
+NETWORK
+TITLE =Set outputs
+
+      L     #WEIGHT_SUM1; 
+      T     #WEIGHT_1; 
+      L     #WEIGHT_SUM2; 
+      T     #WEIGHT_2; 
+      L     #WEIGHT_SUM3; 
+      T     #WEIGHT_3; 
+      L     0; 
+      T     #STATUS; 
+
+END_FUNCTION
+

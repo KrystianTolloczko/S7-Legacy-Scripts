@@ -1,0 +1,184 @@
+FUNCTION FC 1360 : VOID
+TITLE =FC Conv ASCII 2 INT
+//Author: K.T.
+AUTHOR : 'K.T.'
+VERSION : 0.3
+
+
+VAR_INPUT
+  Char_1 : CHAR ;	
+  Char_2 : CHAR ;	
+  Char_3 : CHAR ;	
+  Char_4 : CHAR ;	
+  Char_5 : CHAR ;	
+  Char_6 : CHAR ;	
+END_VAR
+VAR_OUTPUT
+  Int_val : DWORD ;	
+END_VAR
+VAR_TEMP
+  t_Char_1 : INT ;	
+  t_Char_2 : INT ;	
+  t_Char_3 : INT ;	
+  t_Char_4 : INT ;	
+  t_Char_5 : INT ;	
+  t_Char_6 : INT ;	
+  t_Dummy : BOOL ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Wandeln von Char in int
+
+      L     #Char_1; 
+      L     48; 
+      -I    ; 
+      L     L#100000; 
+      *I    ; 
+      T     #t_Char_1; 
+
+      L     #Char_2; 
+      L     48; 
+      -I    ; 
+      L     L#10000; 
+      *I    ; 
+      T     #t_Char_2; 
+
+      L     #Char_3; 
+      L     48; 
+      -I    ; 
+      L     L#1000; 
+      *I    ; 
+      T     #t_Char_3; 
+
+      L     #Char_4; 
+      L     48; 
+      -I    ; 
+      L     L#100; 
+      *I    ; 
+      T     #t_Char_4; 
+
+      L     #Char_5; 
+      L     48; 
+      -I    ; 
+      L     L#10; 
+      *I    ; 
+      T     #t_Char_5; 
+
+      L     #Char_6; 
+      L     48; 
+      -I    ; 
+      T     #t_Char_6; 
+
+NETWORK
+TITLE =Werte ist nicht ' ' ( =B#16#20 )
+
+      O(    ; 
+      U(    ; 
+      L     #Char_1; 
+      L     B#16#0; 
+      ==I   ; 
+      )     ; 
+      SPBNB _001; 
+      L     B#16#0; 
+      T     #t_Char_1; 
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+_001: U     BIE; 
+      )     ; 
+      O(    ; 
+      U(    ; 
+      L     #Char_2; 
+      L     B#16#0; 
+      ==I   ; 
+      )     ; 
+      SPBNB _002; 
+      L     B#16#0; 
+      T     #t_Char_2; 
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+_002: U     BIE; 
+      )     ; 
+      O(    ; 
+      U(    ; 
+      L     #Char_3; 
+      L     B#16#0; 
+      ==I   ; 
+      )     ; 
+      SPBNB _003; 
+      L     B#16#0; 
+      T     #t_Char_3; 
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+_003: U     BIE; 
+      )     ; 
+      O(    ; 
+      U(    ; 
+      L     #Char_4; 
+      L     B#16#0; 
+      ==I   ; 
+      )     ; 
+      SPBNB _004; 
+      L     B#16#0; 
+      T     #t_Char_4; 
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+_004: U     BIE; 
+      )     ; 
+      O(    ; 
+      U(    ; 
+      L     #Char_5; 
+      L     B#16#0; 
+      ==I   ; 
+      )     ; 
+      SPBNB _005; 
+      L     B#16#0; 
+      T     #t_Char_5; 
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+_005: U     BIE; 
+      )     ; 
+      O(    ; 
+      U(    ; 
+      L     #Char_6; 
+      L     B#16#0; 
+      ==I   ; 
+      )     ; 
+      SPBNB _006; 
+      L     B#16#0; 
+      T     #t_Char_6; 
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+_006: U     BIE; 
+      )     ; 
+      =     #t_Dummy; 
+NETWORK
+TITLE =Wandeln von Char in int
+
+      L     #t_Char_1; 
+      L     #t_Char_2; 
+      +I    ; 
+      L     #t_Char_3; 
+      +I    ; 
+      L     #t_Char_4; 
+      +I    ; 
+      L     #t_Char_5; 
+      +I    ; 
+      L     #t_Char_6; 
+      +I    ; 
+      T     #Int_val; 
+
+NETWORK
+TITLE =Block Ende
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+END_FUNCTION
+

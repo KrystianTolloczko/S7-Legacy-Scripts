@@ -1,0 +1,445 @@
+FUNCTION FC 965 : VOID
+TITLE =LT TYPEN VERGLEICH
+//Author: K.T.
+//
+//V0.1 - First release
+//V0.2 - New table integr.
+//V0.3 - Loops modification
+AUTHOR : 'K.T.'
+VERSION : 0.3
+
+
+VAR_INPUT
+  i_Neu_daten_vorhanden : BOOL ;	//Neu daten von SIEMENS vorhanden
+  i_Sachnummer_Pointer : POINTER ;	//Sachnumer
+  i_LT_Typ : POINTER ;	//LT Typ
+  i_Fehler_Dopp_WT : BOOL ;	
+  i_Fehler_TP : BOOL ;	
+  i_Fehler_TL : BOOL ;	
+  i_Fehler_SL : BOOL ;	
+  i_Fehler_SU : BOOL ;	
+END_VAR
+VAR_OUTPUT
+  o_LT_Plausibel : BOOL ;	//LT Nummer Plausibel
+  o_LT_Fehler : BOOL ;	//LT Nummer Fehler
+  o_LT_Typ_1 : BOOL ;	//LT Typ '08'
+  o_LT_Typ_2 : BOOL ;	//LT Typ '62'
+  o_LT_Typ_3 : BOOL ;	//LT Typ '64'
+  o_LT_Typ_4 : BOOL ;	//LT Typ '65'
+  o_LT_Typ_5 : BOOL ;	//LT Typ '66'
+  o_Status_byte : BYTE ;	//1=Sachnummer check OK, 7=LT Type inconsistent, 8=Sachnummer is not recognized;
+END_VAR
+VAR_TEMP
+  t_ar1_backup : DWORD ;	
+  t_ar2_backup : DWORD ;	
+  t_true : BOOL ;	
+  t_false : BOOL ;	
+  t_db_nr_quelle_1 : INT ;	
+  t_byte_nr_quelle_1 : INT ;	
+  t_bit_nr_quelle_1 : INT ;	
+  t_db_nr_quelle_2 : INT ;	
+  t_byte_nr_quelle_2 : INT ;	
+  t_bit_nr_quelle_2 : INT ;	
+  t_offset_quelle : INT ;	
+  t_offset_ziel : INT ;	
+  t_offset_ziel_DB : INT ;	
+  t_loopcounter_1 : INT ;	
+  t_loopcounter_2 : INT ;	
+  t_loopcounter_3 : INT ;	
+  t_loopcounter_4 : INT ;	
+  t_sach_anzahl : INT ;	
+  t_vergl_counter : INT ;	
+  t_db_daten : WORD ;	
+  t_LT : WORD ;	
+  t_typ_ok : BOOL ;	
+  t_verglich_ok : BOOL ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern u. Eins-/Nullmerker erzeugen
+
+      TAR1  #t_ar1_backup; // Adressregister 1 sichern
+      TAR2  #t_ar2_backup; // Adressregister 1 sichern
+
+      SET   ; 
+      =     #t_true; // internen '1'-Merker bilden
+
+      CLR   ; 
+      =     #t_false; // internen '0'-Merker bilden
+
+NETWORK
+TITLE =Speicher löschen
+
+
+      L     0; 
+      T     #t_offset_quelle; 
+      T     #t_offset_ziel; 
+      T     #t_offset_ziel_DB; 
+      T     #t_db_daten; 
+      T     #o_Status_byte; 
+
+      CLR   ; 
+      =     #t_typ_ok; 
+      =     #t_verglich_ok; 
+      =     #o_LT_Plausibel; 
+      =     #o_LT_Fehler; 
+      =     #o_LT_Typ_1; 
+      =     #o_LT_Typ_2; 
+      =     #o_LT_Typ_3; 
+      =     #o_LT_Typ_4; 
+      =     #o_LT_Typ_5; 
+
+NETWORK
+TITLE =
+
+
+
+      U     #i_Neu_daten_vorhanden; 
+      SPBN  Ende; 
+NETWORK
+TITLE =Sachnummer Pointer
+
+      L     P##i_Sachnummer_Pointer; // Sachnummer Pointer
+      LAR1  ; 
+
+// ermitteln der DB Adresse des Pointers
+      L     W [AR1,P#0.0]; 
+      T     #t_db_nr_quelle_1; // Db_number
+
+// ermitteln der Byte Adresse des Pointers
+      L     B [AR1,P#2.0]; // Memory area 
+      L     D [AR1,P#2.0]; // Area pointer of input parameter 
+      SLD   8; 
+      SRD   11; 
+      T     #t_byte_nr_quelle_1; // Byte address
+
+// ermitteln der Bit Adresse des Pointers
+      L     W [AR1,P#4.0]; 
+      SLW   13; 
+      SRW   13; 
+      T     #t_bit_nr_quelle_1; // Bit address
+
+NETWORK
+TITLE =Suche Anzahl der Bytes
+
+      AUF   DB [#t_db_nr_quelle_1]; // Öffnen der Quelle
+
+      L     21; // 21 bytes
+l001: T     #t_loopcounter_1; // Vorbelegung des Schleifenzählers
+
+      L     #t_byte_nr_quelle_1; // Startadresse errechnen
+      L     #t_offset_quelle; 
+      +I    ; 
+      SLD   3; // Ab ins Pointerformat
+      LAR1  ; 
+
+      O(    ; 
+      L     B#16#0; // ==0
+      L     DBB [AR1,P#0.0]; 
+      ==I   ; 
+      )     ; 
+      O(    ; 
+      L     B#16#20; // ==Null
+      L     DBB [AR1,P#0.0]; 
+      ==I   ; 
+      )     ; 
+      SPB   j051; // Springen
+
+      L     #t_offset_quelle; 
+      L     1; 
+      +I    ; 
+      T     #t_offset_quelle; // Neuer Offset Ziel   (+1Byte)
+
+      L     #t_loopcounter_1; // Schleifenende
+      LOOP  l001; 
+
+j051: L     #t_offset_quelle; 
+      T     #t_sach_anzahl; // Anzahl der Bytes
+
+
+NETWORK
+TITLE =LT Typ Pointer
+
+      L     P##i_LT_Typ; // LT Typ Pointer
+      LAR1  ; 
+
+// ermitteln der DB Adresse des Pointers
+      L     W [AR1,P#0.0]; 
+      T     #t_db_nr_quelle_2; // Db_number
+
+// ermitteln der Byte Adresse des Pointers
+      L     B [AR1,P#2.0]; // Memory area 
+      L     D [AR1,P#2.0]; // Area pointer of input parameter 
+      SLD   8; 
+      SRD   11; 
+      T     #t_byte_nr_quelle_2; // Byte address
+
+// ermitteln der Bit Adresse des Pointers
+      L     W [AR1,P#4.0]; 
+      SLW   13; 
+      SRW   13; 
+      T     #t_bit_nr_quelle_2; // Bit address
+
+
+      AUF   DB [#t_db_nr_quelle_2]; // Öffnen der Quelle
+
+      L     #t_byte_nr_quelle_2; // Startadresse errechnen
+      SLD   3; // Ab ins Pointerformat
+      LAR1  ; 
+
+      L     DBW [AR1,P#0.0]; // Zu kopierendes Word zwischenspeichern
+      T     #t_LT; 
+
+NETWORK
+TITLE =Vergleicht Tabellen
+
+      L     965; 
+      T     #t_db_daten; // Erste DB Daten
+
+      L     5; // Anzahl der DB Daten !!
+l002: T     #t_loopcounter_2; 
+//-- Loop 2 ----------------------------
+
+      L     0; 
+      T     #t_offset_ziel_DB; // Offset Ziel DB löschen
+
+      AUF   DI [#t_db_daten]; // Öffnen der Quelle
+      AUF   DB [#t_db_nr_quelle_1]; // Öffnen der Quelle
+
+//-- Loop 3 ----------------------------
+      L     59; // Typen tabell Anzahl der Zellen
+l003: T     #t_loopcounter_3; // Vorbelegung des Schleifenzählers
+
+      L     #t_offset_ziel_DB; 
+      SLD   3; // Ab ins Pointerformat
+      LAR1  ; 
+
+      L     0; 
+      T     #t_vergl_counter; // Verglich counter löschen
+      T     #t_offset_ziel; // Offset Ziel löschen
+
+      L     #t_byte_nr_quelle_1; // Startadresse errechnen
+      SLD   3; // Ab ins Pointerformat
+      LAR2  ; 
+
+//-- Loop 4 ----------------------------
+      L     #t_sach_anzahl; // Sach Anzahl Bytes       
+l004: T     #t_loopcounter_4; // Vorbelegung des Schleifenzählers
+
+      L     DIB [AR1,P#0.0]; // AR1 daten
+      L     DBB [AR2,P#0.0]; // AR2 daten
+      ==I   ; 
+      SPBN  j081; // Springen
+
+      L     #t_vergl_counter; 
+      INC   1; 
+      T     #t_vergl_counter; // Neuer vergl io   (+1)
+
+      L     #t_vergl_counter; // Verglich counter pruefen
+      L     #t_sach_anzahl; // Sach Anzahl Bytes   
+      ==I   ; 
+      SPBN  j082; // Springen
+
+      S     #t_verglich_ok; // Verglich OK
+      SPA   Verg; // Springen
+
+j082: +AR1  P#1.0; // AR1 +1
+      +AR2  P#1.0; // AR2 +1
+
+      L     #t_loopcounter_4; // Schleifenende
+      LOOP  l004; 
+//-- Loop 4 Ende ------------------------
+
+j081: L     #t_offset_ziel_DB; // Offset Ziel DB
+      L     22; 
+      +I    ; 
+      T     #t_offset_ziel_DB; // Neuer Offset Ziel   (+21 Byte)
+
+      L     #t_loopcounter_3; // Schleifenende
+      LOOP  l003; 
+//-- Loop 3 Ende ------------------------
+
+      L     #t_db_daten; // DB Daten
+      INC   1; 
+      T     #t_db_daten; // Neuer offset DB Daten   (+1)
+
+      L     #t_loopcounter_2; // Schleifenende
+      LOOP  l002; 
+//-- Loop 2 Ende ------------------------
+
+NETWORK
+TITLE =LT Typ Pointer
+
+Verg: U(    ; 
+      L     #t_LT; 
+      L     W#16#3038; // Typ 08
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_db_daten; // DB Daten
+      L     965; 
+      ==I   ; 
+      )     ; 
+      SPBN  j091; // Springen
+
+// -------------------------
+      SET   ; 
+      =     #o_LT_Typ_1; // LT Typ 1 
+// -------------------------
+
+j091: U(    ; 
+      L     #t_LT; 
+      L     W#16#3632; // Typ 62
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_db_daten; // DB Daten
+      L     966; 
+      ==I   ; 
+      )     ; 
+      SPBN  j092; // Springen
+
+// -------------------------
+      SET   ; 
+      =     #o_LT_Typ_2; // LT Typ 2 
+// -------------------------
+
+j092: U(    ; 
+      L     #t_LT; 
+      L     W#16#3634; // Typ 64
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_db_daten; // DB Daten
+      L     967; 
+      ==I   ; 
+      )     ; 
+      SPBN  j093; // Springen
+
+// -------------------------
+      SET   ; 
+      =     #o_LT_Typ_3; // LT Typ 3 
+// -------------------------
+
+j093: U(    ; 
+      L     #t_LT; 
+      L     W#16#3635; // Typ 65
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_db_daten; // DB Daten
+      L     968; 
+      ==I   ; 
+      )     ; 
+      SPBN  j094; // Springen
+
+// -------------------------
+      SET   ; 
+      =     #o_LT_Typ_4; // LT Typ 4 
+// -------------------------
+
+j094: U(    ; 
+      L     #t_LT; 
+      L     W#16#3038; // Typ 08
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_db_daten; // DB Daten
+      L     969; 
+      ==I   ; 
+      )     ; 
+      SPBN  j095; // Springen
+
+// -------------------------
+      SET   ; 
+      =     #o_LT_Typ_5; // LT Typ 5 
+// -------------------------
+
+j095: O     #o_LT_Typ_1; 
+      O     #o_LT_Typ_2; 
+      O     #o_LT_Typ_3; 
+      O     #o_LT_Typ_4; 
+      O     #o_LT_Typ_5; 
+      =     #t_typ_ok; // DB typ OK
+
+NETWORK
+TITLE =Ausgaben
+
+Ende: U     #i_Neu_daten_vorhanden; 
+      =     L     45.0; 
+      U     L     45.0; 
+      U     #t_typ_ok; 
+      U     #t_verglich_ok; 
+      =     #o_LT_Plausibel; 
+      U     L     45.0; 
+      UN    #o_LT_Plausibel; 
+      =     #o_LT_Fehler; 
+NETWORK
+TITLE =Status Byte Generationen
+
+      U     #i_Neu_daten_vorhanden; 
+      =     L     45.0; 
+      U     L     45.0; 
+      UN    #t_verglich_ok; 
+      SPBNB _001; 
+      L     8; 
+      T     #o_Status_byte; 
+_001: NOP   0; 
+      U     L     45.0; 
+      U     #t_verglich_ok; 
+      UN    #t_typ_ok; 
+      SPBNB _002; 
+      L     7; 
+      T     #o_Status_byte; 
+_002: NOP   0; 
+      U     L     45.0; 
+      U     #i_Fehler_SU; 
+      SPBNB _003; 
+      L     6; 
+      T     #o_Status_byte; 
+_003: NOP   0; 
+      U     L     45.0; 
+      U     #i_Fehler_SL; 
+      SPBNB _004; 
+      L     5; 
+      T     #o_Status_byte; 
+_004: NOP   0; 
+      U     L     45.0; 
+      U     #i_Fehler_TL; 
+      SPBNB _005; 
+      L     4; 
+      T     #o_Status_byte; 
+_005: NOP   0; 
+      U     L     45.0; 
+      U     #i_Fehler_TP; 
+      SPBNB _006; 
+      L     3; 
+      T     #o_Status_byte; 
+_006: NOP   0; 
+      U     L     45.0; 
+      U     #i_Fehler_Dopp_WT; 
+      SPBNB _007; 
+      L     2; 
+      T     #o_Status_byte; 
+_007: NOP   0; 
+      U     L     45.0; 
+      U     #o_LT_Plausibel; 
+      SPBNB _008; 
+      L     1; 
+      T     #o_Status_byte; 
+_008: NOP   0; 
+NETWORK
+TITLE =Adressregister zurückspielen
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+      L     #t_ar1_backup; 
+      LAR1  ; 
+      L     #t_ar2_backup; 
+      LAR2  ; 
+
+
+END_FUNCTION
+

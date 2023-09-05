@@ -1,0 +1,260 @@
+FUNCTION FC 1566 : VOID
+TITLE =IMA Code Check
+//Author: K.T.
+AUTHOR : 'K.T.'
+VERSION : 0.3
+
+
+VAR_INPUT
+  i_DB : INT ;	
+  i_Start_Byte : INT ;	
+END_VAR
+VAR_OUTPUT
+  Laen_Fehler : BOOL ;	//Laenge Felher
+  Laenge : INT ;	//Laenge
+  Zero_Fehler : BOOL ;	//Zero Fehler
+  Code_Part : INT ;	//Code Part (Injector 1..2..3..4)
+END_VAR
+VAR_TEMP
+  t_ar1 : WORD ;	
+  t_ar2 : WORD ;	
+  t_true : BOOL ;	
+  t_false : BOOL ;	
+  t_DB : WORD ;	
+  t_Abwahl_Laen : INT ;	
+  t_Abwahl_Zero : INT ;	
+  t_Start_Byte_Laen : INT ;	
+  t_Start_Byte_Zero : INT ;	
+  t_Schleife_Laen : INT ;	
+  t_Schleife_Zero : INT ;	
+  t_Laenge : INT ;	
+  t_Code_Part : INT ;	
+  t_Null_Dec : BYTE ;	
+  t_Null_Hex : BYTE ;	
+  t_Zero_Hex : BYTE ;	
+  t_01_zero : BOOL ;	
+  t_02_zero : BOOL ;	
+  t_03_zero : BOOL ;	
+  t_04_zero : BOOL ;	
+  t_05_zero : BOOL ;	
+  t_Zero_Fehler : BOOL ;	
+  t_Laen_Fehler : BOOL ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern & intern 1/0-Merker 
+
+      TAR1  ; 
+      T     #t_ar1; 
+      TAR2  ; 
+      T     #t_ar2; 
+
+      CLR   ; 
+      SAVE  ; 
+
+NETWORK
+TITLE =Temps
+
+      CLR   ; 
+      =     #t_01_zero; 
+      =     #t_02_zero; 
+      =     #t_03_zero; 
+      =     #t_04_zero; 
+      =     #t_05_zero; 
+      =     #t_Zero_Fehler; 
+      =     #t_Laen_Fehler; 
+
+
+
+      L     #i_DB; 
+      T     #t_DB; 
+
+      L     #i_Start_Byte; 
+      T     #t_Start_Byte_Zero; 
+      T     #t_Start_Byte_Laen; 
+
+
+// Laenge Check
+      L     36; 
+      T     #t_Abwahl_Laen; 
+      T     #t_Laenge; 
+
+
+// Zero/Null Check
+      L     4; 
+      T     #t_Abwahl_Zero; 
+
+      L     0; 
+      T     #t_Code_Part; 
+      T     #Code_Part; 
+
+
+// Values
+      L     0; 
+      T     #t_Null_Dec; 
+
+      L     B#16#20; 
+      T     #t_Null_Hex; 
+
+      L     B#16#30; 
+      T     #t_Zero_Hex; 
+
+NETWORK
+TITLE =Laenge Check
+
+      AUF   DB [#t_DB]; 
+
+      L     #t_Abwahl_Laen; 
+SC1:  T     #t_Schleife_Laen; 
+
+      L     #t_Start_Byte_Laen; 
+      SLD   3; 
+      LAR1  ; 
+
+
+// LAENGE
+// ===========================
+      U(    ; 
+      L     DBB [AR1,P#0.0]; 
+      L     #t_Null_Dec; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     DBB [AR1,P#0.0]; 
+      L     #t_Null_Hex; 
+      <>I   ; 
+      )     ; 
+      SPB   Lae1; 
+      L     #t_Laenge; 
+      L     1; 
+      -I    ; 
+      T     #t_Laenge; 
+Lae1: NOP   0; 
+
+
+      L     #t_Start_Byte_Laen; 
+      L     1; // Increment
+      +I    ; 
+      T     #t_Start_Byte_Laen; 
+
+      L     #t_Schleife_Laen; 
+      LOOP  SC1; 
+
+
+      L     #t_Laenge; 
+      L     20; 
+      <>I   ; 
+      =     #t_Laen_Fehler; 
+
+NETWORK
+TITLE =Zero/Null Check
+
+      AUF   DB [#t_DB]; 
+
+      L     #t_Abwahl_Zero; 
+SC2:  T     #t_Schleife_Zero; 
+
+      L     #t_Start_Byte_Zero; 
+      SLD   3; 
+      LAR2  ; 
+
+
+// IMA SIGN 1..6..11..16
+// ===========================
+      L     DBB [AR2,P#0.0]; 
+      L     #t_Zero_Hex; 
+      ==I   ; 
+      =     #t_01_zero; 
+
+
+
+// IMA SIGN 2..7..12..17
+// ===========================
+      L     DBB [AR2,P#1.0]; 
+      L     #t_Zero_Hex; 
+      ==I   ; 
+      =     #t_02_zero; 
+
+
+
+// IMA SIGN 3..8..13..18
+// ===========================
+      L     DBB [AR2,P#2.0]; 
+      L     #t_Zero_Hex; 
+      ==I   ; 
+      =     #t_03_zero; 
+
+
+
+// IMA SIGN 4..9..14..19
+// ===========================
+      L     DBB [AR2,P#3.0]; 
+      L     #t_Zero_Hex; 
+      ==I   ; 
+      =     #t_04_zero; 
+
+
+
+// IMA SIGN 5..10..15..20
+// ===========================
+      L     DBB [AR2,P#4.0]; 
+      L     #t_Zero_Hex; 
+      ==I   ; 
+      =     #t_05_zero; 
+
+      L     #t_Code_Part; 
+      L     1; 
+      +I    ; 
+      T     #t_Code_Part; 
+
+      U     #t_01_zero; 
+      U     #t_02_zero; 
+      U     #t_03_zero; 
+      U     #t_04_zero; 
+      U     #t_05_zero; 
+      =     #t_Zero_Fehler; 
+      SPB   NIO1; 
+
+
+      L     #t_Start_Byte_Zero; 
+      L     5; // Offset =5 byte
+      +I    ; 
+      T     #t_Start_Byte_Zero; 
+
+      L     #t_Schleife_Zero; 
+      LOOP  SC2; 
+
+NETWORK
+TITLE =IMA Code n.I.O oder I.O.
+
+NIO1: U     #t_Laen_Fehler; 
+      =     #Laen_Fehler; 
+
+      L     #t_Laenge; 
+      T     #Laenge; 
+
+      U     #t_Zero_Fehler; 
+      =     #Zero_Fehler; 
+      SPBN  Zer1; 
+      L     #t_Code_Part; 
+      T     #Code_Part; 
+Zer1: NOP   0; 
+
+      O     #t_Laen_Fehler; 
+      O     #t_Zero_Fehler; 
+      SPB   NIO2; 
+      SET   ; 
+      SAVE  ; 
+NIO2: NOP   0; 
+
+NETWORK
+TITLE =Ende Bearbeitung Adressregister zurückspielen
+
+      L     #t_ar1; 
+      LAR1  ; 
+
+      L     #t_ar2; 
+      LAR2  ; 
+
+END_FUNCTION
+

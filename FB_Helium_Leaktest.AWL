@@ -1,0 +1,541 @@
+FUNCTION_BLOCK FB 950
+TITLE =Schnittstelle Dichtheitsprüfsystem
+{ S7_language := '7(1) German (Germany)  16.03.2012  13:20:46' }
+AUTHOR : 'KT'
+VERSION : 0.1
+
+
+VAR_INPUT
+  i_LAADR : WORD ;	//HW Adresse des DPS
+  i_Auto : BOOL ;	//Station in Automatik
+  i_Motor_bereit : BOOL ;	//Motor ist bereit für Messung
+  i_Quitt_Error : BOOL ;	//Störungen quittieren
+  i_Messung_starten : BOOL ;	//Messung starten
+  i_Anw_GST : BOOL ;	//DPS Ablauf zurücksetzen
+  i_Selbsttest_starten : BOOL ;	//Selbsttest DPS starten
+  i_Leckortung_starten : BOOL ;	//Leckortung starten (Programmnummer muss anstehen)
+  i_Anwahl_Kanal_A : BOOL ;	
+  i_Anwahl_Kanal_B : BOOL ;	
+  i_Anwahl_Kanal_C : BOOL ;	
+  i_Anwahl_Kanal_D : BOOL ;	
+  i_Prg_Nr : INT ;	
+  i_Moby_DB : INT ;	//Moby DB für Motorinformationen
+END_VAR
+VAR_OUTPUT
+  o_DPS_laeuft : BOOL ;	//DPS: Gerät betriebsbereit
+  o_DPS_bereit : BOOL ;	//DPS: Gerät bereit für nächsten Prüfablauf
+  o_DPS_Messung_laeuft : BOOL ;	//DPS:Messung läuft
+  o_DPS_Stoerung : BOOL ;	//DPS: Störung
+  o_DPS_Gesamt_IO : BOOL ;	//DPS: Gesamt IO
+  o_DPS_Gesamt_NIO : BOOL ;	//DPS: Gesamt NIO
+  o_DPS_Gesamt_Werker_IO : BOOL ;	//DPS: Gesamt Werker IO
+  o_com_error : BOOL ;	//Kommunikation zum DPS gestört
+  o_DPS_Error_Msg : WORD ;	//DPS:Fehlermeldung vom DPS
+END_VAR
+VAR
+  Schnittstelle : UDT 350;	
+END_VAR
+VAR_TEMP
+  t_ar1_backup : DWORD ;	
+  t_ar2_backup : DWORD ;	
+  t_true : BOOL ;	
+  t_false : BOOL ;	
+  t_DBNR : WORD ;	
+  t_LAADR : WORD ;	
+  t_moby_db : WORD ;	
+  t_dummy : WORD ;	
+  t_ret_value : INT ;	
+  t_schleife_1 : INT ;	
+  t_schleife_2 : INT ;	
+  t_offset_1 : INT ;	
+  t_offset_2 : INT ;	
+  t_record_1 : ANY ;	
+  t_record_2 : ANY ;	
+  t_error_msg : ARRAY  [0 .. 15 ] OF BOOL ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern u. Eins-/Nullmerker erzeugen
+
+      TAR1  #t_ar1_backup; // Adressregister 1 sichern
+      TAR2  #t_ar2_backup; // Adressregister 1 sichern
+
+      SET   ; 
+      =     #t_true; // internen '1'-Merker bilden
+
+      CLR   ; 
+      =     #t_false; // internen '0'-Merker bilden
+
+NETWORK
+TITLE =Instanzdatenbaustein identifizieren, HW-Adresse umkopieren
+
+      L     DINO; 
+      T     #t_DBNR; 
+
+      L     #i_LAADR; 
+      T     #t_LAADR; 
+
+NETWORK
+TITLE =Schleife 1 starten
+
+      L     0; 
+      T     #t_offset_1; 
+
+      L     8; 
+L01:  T     #t_schleife_1; 
+
+NETWORK
+TITLE =Any-Pointer zum Einlesen der Daten zusammen stellen
+//EB1200-EB1215 (128 Bytes)
+      LAR1  P##t_record_1; 
+
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     16; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_LAADR; 
+      L     #t_offset_1; 
+      +I    ; 
+      T     LW [AR1,P#4.0]; 
+      L     0; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#81; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_record_2; 
+
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     16; 
+      T     LW [AR2,P#2.0]; 
+      L     #t_DBNR; 
+      T     LW [AR2,P#4.0]; 
+      L     P##Schnittstelle; 
+      SRD   3; 
+      L     #t_offset_1; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR2,P#6.0]; 
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+NETWORK
+TITLE =Daten holen
+//Aufgrund des aktuellen Konzeptes werden noch nicht alle Eingangsdaten des 
+//PC-Systems eingelesen. Sollte sich dies noch einmal ändern, muss das Einlesen 
+//analog zum Schreiben der Daten angepasst werden.
+//17.02.2011 S.Rietow
+//
+//PN-PN Koppler & Schleife integration
+//05.01.2015 K.Tolloczko
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record_1,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record_2);
+
+      L     #t_ret_value; 
+      L     0; 
+      <>I   ; 
+      SPB   ende; 
+
+      L     #t_offset_1; 
+      L     16; 
+      +I    ; 
+      T     #t_offset_1; 
+
+NETWORK
+TITLE =Schleife 1 ende
+
+      L     #t_schleife_1; 
+      LOOP  L01; 
+
+NETWORK
+TITLE =Automatik an DPS schicken
+
+      U     #i_Auto; 
+      =     #Schnittstelle.Inputs.Steuerbyte.AUTOMATIK; //inputs automatik
+
+NETWORK
+TITLE =Lebensbit u. Quitt an Lecktestgerät schicken
+
+      U     #Schnittstelle.Outputs.DPSStatus.LEBENSBIT; //outputs.lebensbit
+      =     #Schnittstelle.Inputs.Steuerbyte.LEBENSBIT; //inputs.lebensbit
+
+      U     #i_Quitt_Error; 
+      =     #Schnittstelle.Inputs.Steuerbyte.Quitt_Systemfehler; //inputs.quitt
+NETWORK
+TITLE =Anwahl der Messkanäle durchreichen
+
+      U     #i_Anwahl_Kanal_A; 
+      =     #Schnittstelle.Inputs.EASChannel.Kanal_A; //easchannel.kanal_a
+
+      U     #i_Anwahl_Kanal_B; 
+      =     #Schnittstelle.Inputs.EASChannel.Kanal_B; //easchannel.kanal_b
+
+      U     #i_Anwahl_Kanal_C; 
+      =     #Schnittstelle.Inputs.EASChannel.Kanal_C; //easchannel.kanal_c
+
+      U     #i_Anwahl_Kanal_D; 
+      =     #Schnittstelle.Inputs.EASChannel.Kanal_D; //easchannel.kanal_d
+
+      L     #i_Prg_Nr; 
+      T     #Schnittstelle.Inputs.Programmnummer; 
+NETWORK
+TITLE =Motordaten bereitstellen für Lecktestgerät
+
+      U     #i_Auto; 
+      U     #i_Motor_bereit; 
+      SPBN  m001; 
+
+      L     #i_Moby_DB; 
+      T     #t_moby_db; 
+
+// Motornummer kopieren
+
+      LAR1  P##t_record_1; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     24; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_moby_db; 
+      T     LW [AR1,P#4.0]; 
+      L     92; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record_1,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #Schnittstelle.Inputs.Motornummer);
+
+// Typschlüssel kopieren
+
+      LAR1  P##t_record_1; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     20; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_moby_db; 
+      T     LW [AR1,P#4.0]; 
+      L     117; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record_1,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #Schnittstelle.Inputs.Typschluessel);
+
+//Baureihe kopieren
+
+      LAR1  P##t_record_1; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     6; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_moby_db; 
+      T     LW [AR1,P#4.0]; 
+      L     159; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record_1,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #Schnittstelle.Inputs.Baureihe);
+
+m001: NOP   0; 
+
+NETWORK
+TITLE =Prüfablauf starten
+
+      U     #i_Auto; 
+      U     #i_Messung_starten; 
+      UN    #i_Leckortung_starten; 
+      U     #Schnittstelle.Outputs.DPSStatus.Betriebsbereit; //dpsstatus.betriebsbereit
+      U     #Schnittstelle.Outputs.DPSStatus.Messgeraet_betriebsberei; //dpsstatus.messgerät_betriebsbereit
+      U(    ; 
+      L     #Schnittstelle.Inputs.Programmnummer; 
+      L     0; 
+      <>I   ; 
+      )     ; 
+      =     #Schnittstelle.Inputs.Steuerbyte.Pruefablauf_starten; //inputs.pruefablauf_starten
+
+
+NETWORK
+TITLE =Leckortung starten
+
+      U     #i_Auto; 
+      U     #i_Leckortung_starten; 
+      UN    #i_Messung_starten; 
+      U     #Schnittstelle.Outputs.DPSStatus.Betriebsbereit; //dpsstatus.betriebsbereit
+      U     #Schnittstelle.Outputs.DPSStatus.Messgeraet_betriebsberei; //dpsstatus.messgerät_betriebsbereit
+      U(    ; 
+      L     #Schnittstelle.Inputs.Programmnummer; 
+      L     0; 
+      <>I   ; 
+      )     ; 
+      =     #Schnittstelle.Inputs.Steuerbyte.Leckortung_starten; 
+NETWORK
+TITLE =DPS Selbsttest anstoßen
+
+      U     #i_Selbsttest_starten; 
+      U     #i_Auto; 
+      UN    #i_Messung_starten; 
+      U     #Schnittstelle.Outputs.DPSStatus.Betriebsbereit; //dpsstatus.betriebsbereit
+      U     #Schnittstelle.Outputs.DPSStatus.Messgeraet_betriebsberei; //messgerät_betriebsbereit
+      =     #Schnittstelle.Inputs.Steuerbyte.Selbsttest_starten; //inputs.selbsttest_starten
+
+NETWORK
+TITLE =Abbruch bzw. Reset an Messgerät senden
+//Abbruch:
+//Hält die aktuelle Funktionsausführung sofort an. Das DPS geht in einen 
+//Halt-Modus. Die Anlage bleibt, je nach Phase, unter Druck. Es efolgt kein Reset.
+//
+//Reset:
+//Bricht die aktuelle Funktionsausführung ab und fährt das DPS in die 
+//Grundstellung. Das System wird bei Bedarf entlüftet und ist drucklos.
+      UN    #i_Auto; 
+      U     #Schnittstelle.Outputs.DPSStatus.Betriebsbereit; //dpsstatus.betriebsbereit
+      U     #Schnittstelle.Outputs.DPSStatus.Messung_laeuft; //dpsstatus.messung_läuft
+      =     #Schnittstelle.Inputs.Steuerbyte.Abbruch; 
+
+      U     #i_Anw_GST; 
+      =     #Schnittstelle.Inputs.Steuerbyte.Reset; //inputs.reset
+
+      U     M      1.5; 
+      =     #Schnittstelle.Inputs.Steuerbyte.Reserve_1_1; 
+
+NETWORK
+TITLE =Ergebnis des Prüfablaufs an FB-Ausgänge legen
+
+      U     #Schnittstelle.Outputs.DPSStatus.Ergebnis_vorhanden; //dpsstatus.ergebnis_vorhanden
+      U     #Schnittstelle.Outputs.DPSStatus.Gesamt_IO; //dpsstatus.gesamt_io
+      =     #o_DPS_Gesamt_IO; 
+
+      U     #Schnittstelle.Outputs.DPSStatus.Ergebnis_vorhanden; //dpsstatus.ergebnis_vorhanden
+      U     #Schnittstelle.Outputs.DPSStatus.Gesamt_NIO; //dpsstatus.gesamt_nio
+      =     #o_DPS_Gesamt_NIO; 
+
+      U     #Schnittstelle.Outputs.DPSStatus.Ergebnis_vorhanden; //dpsstatus.ergebnis_vorhanden
+      U     #Schnittstelle.Outputs.DPSStatus.Gesamt_Werker_IO; //dpsstatus.gesamt_werker_nio
+      =     #o_DPS_Gesamt_Werker_IO; 
+
+NETWORK
+TITLE =DPS-Zustände den FB-Ausgängen zuordnen 
+
+      U     #Schnittstelle.Outputs.DPSStatus.Betriebsbereit; //dpsstatus.betriebsbereit
+      =     #o_DPS_laeuft; 
+
+      U     #Schnittstelle.Outputs.DPSStatus.Messgeraet_betriebsberei; //dpsstatus.messgerät_betriebsberei
+      =     #o_DPS_bereit; 
+
+      U     #Schnittstelle.Outputs.DPSStatus.Messung_laeuft; //dpsstatus.messung_läuft
+      =     #o_DPS_Messung_laeuft; 
+
+      U     #Schnittstelle.Outputs.DPSStatus.Stoerung; //dpsstatus.stoerung
+      =     #o_DPS_Stoerung; 
+
+NETWORK
+TITLE =Fehlermeldungen vom DPS verwalten u. bereitstellen
+
+      LAR1  P##t_error_msg; 
+      L     0; 
+      T     DIW [AR1,P#0.0]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Allg_Fehler; //dpserror.allg_error
+      =     #t_error_msg[0]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Serien_Ausschuss; //dpserror.serien_ausschuss
+      =     #t_error_msg[1]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Zeitspannenausschuss; //dps_Zeitspannenausschus
+      =     #t_error_msg[2]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Falsche_Version; //dpserror.falsche_version
+      =     #t_error_msg[3]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_0_4; 
+      =     #t_error_msg[4]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_0_5; 
+      =     #t_error_msg[5]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_0_6; 
+      =     #t_error_msg[6]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_0_7; 
+      =     #t_error_msg[7]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_1_0; 
+      =     #t_error_msg[8]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_1_1; 
+      =     #t_error_msg[9]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_1_2; 
+      =     #t_error_msg[10]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_1_3; 
+      =     #t_error_msg[11]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_1_4; 
+      =     #t_error_msg[12]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_1_5; 
+      =     #t_error_msg[13]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_1_6; 
+      =     #t_error_msg[14]; 
+
+      U     #Schnittstelle.Outputs.DPSError.Reserve_1_7; 
+      =     #t_error_msg[15]; 
+
+
+//Fehlermeldungen vom Temp-Bereich in das Ausgangswort schieben
+      LAR1  P##t_error_msg; 
+      L     DIW [AR1,P#0.0]; 
+      T     #o_DPS_Error_Msg; 
+
+NETWORK
+TITLE =Schleife 2 starten
+
+      L     128; 
+      T     #t_offset_1; 
+
+      L     0; 
+      T     #t_offset_2; 
+
+      L     8; 
+L02:  T     #t_schleife_2; 
+
+NETWORK
+TITLE =Any-Pointer zum Schreiben der Daten vorbereiten
+//AB1200-AB1328 (128 Bytes)
+      LAR1  P##t_record_1; 
+
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     16; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_DBNR; 
+      T     LW [AR1,P#4.0]; 
+      L     P##Schnittstelle; 
+      SRD   3; 
+      L     #t_offset_1; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_record_2; 
+
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     16; 
+      T     LW [AR2,P#2.0]; 
+      L     #t_LAADR; 
+      L     #t_offset_2; 
+      +I    ; 
+      T     LW [AR2,P#4.0]; 
+      L     0; 
+      SLD   3; 
+      T     LD [AR2,P#6.0]; 
+      L     B#16#82; 
+      T     LB [AR2,P#6.0]; 
+
+NETWORK
+TITLE =Daten zurück schicken
+//Aufgrund des aktuellen Konzeptes werden noch nicht alle Eingangsdaten des 
+//PC-Systems eingelesen. Sollte sich dies noch einmal ändern, muss das Einlesen 
+//analog zum Schreiben der Daten angepasst werden.
+//17.02.2011 S.Rietow
+//
+//PN-PN Koppler & Schleife integration
+//05.01.2015 K.Tolloczko
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record_1,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record_2);
+
+      L     #t_ret_value; 
+      L     0; 
+      <>I   ; 
+      SPB   ende; 
+
+      L     #t_offset_1; 
+      L     16; 
+      +I    ; 
+      T     #t_offset_1; 
+
+      L     #t_offset_2; 
+      L     16; 
+      +I    ; 
+      T     #t_offset_2; 
+
+NETWORK
+TITLE =Schleife 2 ende
+
+      L     #t_schleife_2; 
+      LOOP  L02; 
+
+NETWORK
+TITLE =Adressregister zurückschreiben, Bausteinende 
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+      U     #t_false; 
+      =     #o_com_error; 
+
+      L     #t_ar1_backup; 
+      LAR1  ; 
+      L     #t_ar2_backup; 
+      LAR2  ; 
+      BEA   ; 
+
+NETWORK
+TITLE =Bei Kommunikationsfehler die Ausgänge entsprechend zuweisen
+
+ende: U     #t_false; 
+      =     #o_DPS_laeuft; 
+      =     #o_DPS_bereit; 
+      U     #t_true; 
+      =     #o_com_error; 
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+      L     #t_ar1_backup; 
+      LAR1  ; 
+      L     #t_ar2_backup; 
+      LAR2  ; 
+
+END_FUNCTION_BLOCK
+

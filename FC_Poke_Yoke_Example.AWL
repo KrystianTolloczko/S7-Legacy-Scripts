@@ -1,0 +1,1313 @@
+FUNCTION FC 49 : VOID
+TITLE =Poke Yoke Auftrag umkopieren
+//Author: K.T.
+//
+//V0.1 - First release
+//V0.2 - Programm 3 disable.
+AUTHOR : 'K.T.'
+NAME : DIAG
+VERSION : 0.1
+
+
+VAR_INPUT
+  i_Auftrag : DWORD ;	
+  i_DMC_Kennung : POINTER ;	
+  i_Variante_Zuord : POINTER ;	
+  i_Quit_Ampel_1 : BOOL ;	
+  i_Quit_Ampel_2 : BOOL ;	
+  i_Quit_Ampel_3 : BOOL ;	
+  i_Quit_Ampel_4 : BOOL ;	
+  i_Quit_Ampel_5 : BOOL ;	
+END_VAR
+VAR_OUTPUT
+  o_Ziel : DWORD ;	
+  o_Ampel_1 : BOOL ;	
+  o_Ampel_2 : BOOL ;	
+  o_Ampel_3 : BOOL ;	
+  o_Ampel_4 : BOOL ;	
+  o_Ampel_5 : BOOL ;	
+  o_Fehler : BOOL ;	
+END_VAR
+VAR_TEMP
+  t_ar1_backup : DWORD ;	
+  t_ar2_backup : DWORD ;	
+  t_true : BOOL ;	
+  t_false : BOOL ;	
+  t_Ret_val : INT ;	
+  t_db_nr_quelle_1 : INT ;	
+  t_byte_nr_quelle_1 : INT ;	
+  t_bit_nr_quelle_1 : INT ;	
+  t_ML_Kennung_1 : CHAR ;	
+  t_ML_Kennung_2 : CHAR ;	
+  t_ML_Kennung_3 : CHAR ;	
+  t_ML_Kennung_4 : CHAR ;	
+  t_ML_Kennung_5 : CHAR ;	
+  t_Programm_1 : STRUCT 	//Address 24!
+   A1 : CHAR ;	
+   A2 : CHAR ;	
+   A3 : CHAR ;	
+   A4 : CHAR ;	
+   A5 : CHAR ;	
+   A6_Reserve : CHAR ;	
+   A7_Reserve : CHAR ;	
+   A8_Reserve : CHAR ;	
+  END_STRUCT ;	
+  t_Programm_2 : STRUCT 	//Address 32!
+   A1 : CHAR ;	
+   A2 : CHAR ;	
+   A3 : CHAR ;	
+   A4 : CHAR ;	
+   A5 : CHAR ;	
+   A6_Reserve : CHAR ;	
+   A7_Reserve : CHAR ;	
+   A8_Reserve : CHAR ;	
+  END_STRUCT ;	
+  t_Programm_3 : STRUCT 	//Address 40!
+   A1 : CHAR ;	
+   A2 : CHAR ;	
+   A3 : CHAR ;	
+   A4 : CHAR ;	
+   A5 : CHAR ;	
+   A6_Reserve : CHAR ;	
+   A7_Reserve : CHAR ;	
+   A8_Reserve : CHAR ;	
+  END_STRUCT ;	
+  t_Slave_Ziel : STRUCT 	//Address 48!
+   Adresse_1 : BOOL ;	//Fach
+   Adresse_2 : BOOL ;	//Fach
+   Adresse_3 : BOOL ;	//Fach
+   Adresse_4 : BOOL ;	//Fach
+   Adresse_5 : BOOL ;	//Fach
+   Adresse_6 : BOOL ;	//Fach
+   Adresse_7 : BOOL ;	//Fach
+   Adresse_8 : BOOL ;	//Fach
+   Adresse_9 : BOOL ;	//Fach
+   Adresse_10 : BOOL ;	//Fach
+   Adresse_11 : BOOL ;	//Fach
+   Adresse_12 : BOOL ;	//Fach
+   Adresse_13 : BOOL ;	//Fach
+   Adresse_14 : BOOL ;	//Fach
+   Adresse_15 : BOOL ;	//Fach
+   Adresse_16 : BOOL ;	//Fach
+   Adresse_17 : BOOL ;	//Fach
+   Adresse_18 : BOOL ;	//Fach
+   Adresse_19 : BOOL ;	//Fach
+   Adresse_20 : BOOL ;	//Fach
+   Adresse_21 : BOOL ;	//Fach
+   Adresse_22 : BOOL ;	//Fach
+   Adresse_23 : BOOL ;	//Fach
+   Adresse_24 : BOOL ;	//Fach
+   Adresse_25 : BOOL ;	//Fach
+   Adresse_26 : BOOL ;	//Fach
+   Adresse_27 : BOOL ;	//Fach
+   Adresse_28 : BOOL ;	//Fach
+   Adresse_29 : BOOL ;	//Fach
+   Adresse_30 : BOOL ;	//Fach
+   Adresse_31 : BOOL ;	//Fach
+   Adresse_32 : BOOL ;	//Fach
+  END_STRUCT ;	
+  t_Prg1_Nicht_Null : BOOL ;	
+  t_Prg2_Nicht_Null : BOOL ;	
+  t_Prg3_Nicht_Null : BOOL ;	
+  t_ML_Nicht_Null : BOOL ;	
+  t_PY_fertig : BOOL ;	
+  t_Slave_Ziel_Alle : STRUCT 	//Address 54!
+   Adresse_1 : BOOL ;	//Fach
+   Adresse_2 : BOOL ;	//Fach
+   Adresse_3 : BOOL ;	//Fach
+   Adresse_4 : BOOL ;	//Fach
+   Adresse_5 : BOOL ;	//Fach
+   Adresse_6 : BOOL ;	//Fach
+   Adresse_7 : BOOL ;	//Fach
+   Adresse_8 : BOOL ;	//Fach
+   Adresse_9 : BOOL ;	//Fach
+   Adresse_10 : BOOL ;	//Fach
+   Adresse_11 : BOOL ;	//Fach
+   Adresse_12 : BOOL ;	//Fach
+   Adresse_13 : BOOL ;	//Fach
+   Adresse_14 : BOOL ;	//Fach
+   Adresse_15 : BOOL ;	//Fach
+   Adresse_16 : BOOL ;	//Fach
+   Adresse_17 : BOOL ;	//Fach
+   Adresse_18 : BOOL ;	//Fach
+   Adresse_19 : BOOL ;	//Fach
+   Adresse_20 : BOOL ;	//Fach
+   Adresse_21 : BOOL ;	//Fach
+   Adresse_22 : BOOL ;	//Fach
+   Adresse_23 : BOOL ;	//Fach
+   Adresse_24 : BOOL ;	//Fach
+   Adresse_25 : BOOL ;	//Fach
+   Adresse_26 : BOOL ;	//Fach
+   Adresse_27 : BOOL ;	//Fach
+   Adresse_28 : BOOL ;	//Fach
+   Adresse_29 : BOOL ;	//Fach
+   Adresse_30 : BOOL ;	//Fach
+   Adresse_31 : BOOL ;	//Fach
+   Adresse_32 : BOOL ;	//Fach
+  END_STRUCT ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern u. Eins-/Nullmerker erzeugen
+
+      TAR1  #t_ar1_backup; // Adressregister 1 sichern
+      TAR2  #t_ar2_backup; // Adressregister 1 sichern
+
+      SET   ; 
+      =     #t_true; // internen '1'-Merker bilden
+
+      CLR   ; 
+      =     #t_false; // internen '0'-Merker bilden
+
+NETWORK
+TITLE =Speicher löschen
+
+
+      L     DW#16#0; 
+      T     LD    48; // t_Slave_Ziel
+      T     #o_Ziel; // o_Ziel
+
+
+      O     #i_Quit_Ampel_1; 
+      O     #i_Quit_Ampel_2; 
+      O     #i_Quit_Ampel_3; 
+      O     #i_Quit_Ampel_4; 
+      O     #i_Quit_Ampel_5; 
+      SPB   _J01; 
+
+      L     DW#16#0; 
+      T     MD    50; 
+
+_J01: NOP   0; 
+
+NETWORK
+TITLE =DMC Kennung Pointer
+
+      L     P##i_DMC_Kennung; // DMC Kennung Pointer
+      LAR1  ; 
+
+// ermitteln der DB Adresse des Pointers
+      L     W [AR1,P#0.0]; 
+      T     #t_db_nr_quelle_1; // Db_number
+
+// ermitteln der Byte Adresse des Pointers
+      L     B [AR1,P#2.0]; // Memory area 
+      L     D [AR1,P#2.0]; // Area pointer of input parameter 
+      SLD   8; 
+      SRD   11; 
+      T     #t_byte_nr_quelle_1; // Byte address
+
+
+      AUF   DB [#t_db_nr_quelle_1]; // Öffnen der Quelle
+
+      L     #t_byte_nr_quelle_1; // Startadresse errechnen
+      SLD   3; // Ab ins Pointerformat
+      LAR1  ; 
+
+      L     DBB [AR1,P#0.0]; 
+      T     #t_ML_Kennung_1; // ML Kennung 1
+
+      L     DBB [AR1,P#1.0]; 
+      T     #t_ML_Kennung_2; // ML Kennung 2
+
+      L     DBB [AR1,P#2.0]; 
+      T     #t_ML_Kennung_3; // ML Kennung 3
+
+      L     DBB [AR1,P#3.0]; 
+      T     #t_ML_Kennung_4; // ML Kennung 4
+
+      L     DBB [AR1,P#4.0]; 
+      T     #t_ML_Kennung_5; // ML Kennung 5
+
+NETWORK
+TITLE =Variante Zuordnung
+
+      L     P##i_Variante_Zuord; // Variante Zuord
+      LAR1  ; 
+
+// ermitteln der DB Adresse des Pointers
+      L     W [AR1,P#0.0]; 
+      T     #t_db_nr_quelle_1; // Db_number
+
+// ermitteln der Byte Adresse des Pointers
+      L     B [AR1,P#2.0]; // Memory area 
+      L     D [AR1,P#2.0]; // Area pointer of input parameter 
+      SLD   8; 
+      SRD   11; 
+      T     #t_byte_nr_quelle_1; // Byte address
+
+
+      AUF   DB [#t_db_nr_quelle_1]; // Öffnen der Quelle
+
+      L     #t_byte_nr_quelle_1; // Startadresse errechnen
+      SLD   3; // Ab ins Pointerformat
+      LAR1  ; 
+
+
+      L     DBD [AR1,P#0.0]; 
+      T     LD    24; // Programm 1 struct
+
+      L     DBD [AR1,P#4.0]; 
+      T     LD    28; // Programm 1 struct
+
+
+      L     DBD [AR1,P#8.0]; 
+      T     LD    32; // Programm 2 struct
+
+      L     DBD [AR1,P#12.0]; 
+      T     LD    36; // Programm 2 struct
+
+
+      L     DBD [AR1,P#16.0]; 
+      T     LD    40; // Programm 3 struct
+
+      L     DBD [AR1,P#20.0]; 
+      T     LD    44; // Programm 3 struct
+
+
+NETWORK
+TITLE =ML Kennung ist nicht Null
+
+      U(    ; 
+      L     B#16#20; 
+      L     #t_ML_Kennung_1; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_ML_Kennung_2; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_ML_Kennung_3; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_ML_Kennung_4; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_ML_Kennung_5; 
+      <>I   ; 
+      )     ; 
+      =     #t_ML_Nicht_Null; 
+NETWORK
+TITLE =Programm 1 ist nicht Null
+
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_1.A1; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_1.A2; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_1.A3; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_1.A4; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_1.A5; 
+      <>I   ; 
+      )     ; 
+      =     #t_Prg1_Nicht_Null; 
+NETWORK
+TITLE =Programm 2 ist nicht Null
+
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_2.A1; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_2.A2; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_2.A3; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_2.A4; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_2.A5; 
+      <>I   ; 
+      )     ; 
+      =     #t_Prg2_Nicht_Null; 
+NETWORK
+TITLE =Programm 3 ist nicht Null
+
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_3.A1; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_3.A2; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_3.A3; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_3.A4; 
+      <>I   ; 
+      )     ; 
+      U(    ; 
+      L     B#16#20; 
+      L     #t_Programm_3.A5; 
+      <>I   ; 
+      )     ; 
+      U     #t_false; 
+      =     #t_Prg3_Nicht_Null; 
+NETWORK
+TITLE =Poke Yoke Fertig
+
+      U     #i_Quit_Ampel_1; 
+      U     #i_Quit_Ampel_2; 
+      U     #i_Quit_Ampel_3; 
+      U     #i_Quit_Ampel_4; 
+      U     #i_Quit_Ampel_5; 
+      =     #t_PY_fertig; 
+NETWORK
+TITLE =Ampel
+
+      U     #t_ML_Nicht_Null; 
+      =     L     58.0; 
+      U     L     58.0; 
+      U(    ; 
+      U     #t_Prg1_Nicht_Null; 
+      U(    ; 
+      L     DW#16#1; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg2_Nicht_Null; 
+      U(    ; 
+      L     DW#16#2; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg3_Nicht_Null; 
+      U(    ; 
+      L     DW#16#3; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      )     ; 
+      L     S5T#250MS; 
+      SE    T    500; 
+      NOP   0; 
+      NOP   0; 
+      NOP   0; 
+      U     T    500; 
+      =     #o_Ampel_1; 
+      U     L     58.0; 
+      U     #i_Quit_Ampel_1; 
+      U(    ; 
+      U     #t_Prg1_Nicht_Null; 
+      U(    ; 
+      L     DW#16#1; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg2_Nicht_Null; 
+      U(    ; 
+      L     DW#16#2; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg3_Nicht_Null; 
+      U(    ; 
+      L     DW#16#3; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      )     ; 
+      L     S5T#250MS; 
+      SE    T    501; 
+      NOP   0; 
+      NOP   0; 
+      NOP   0; 
+      U     T    501; 
+      =     #o_Ampel_2; 
+      U     L     58.0; 
+      U     #i_Quit_Ampel_1; 
+      U     #i_Quit_Ampel_2; 
+      U(    ; 
+      U     #t_Prg1_Nicht_Null; 
+      U(    ; 
+      L     DW#16#1; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg2_Nicht_Null; 
+      U(    ; 
+      L     DW#16#2; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg3_Nicht_Null; 
+      U(    ; 
+      L     DW#16#3; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      )     ; 
+      L     S5T#250MS; 
+      SE    T    502; 
+      NOP   0; 
+      NOP   0; 
+      NOP   0; 
+      U     T    502; 
+      =     #o_Ampel_3; 
+      U     L     58.0; 
+      U     #i_Quit_Ampel_1; 
+      U     #i_Quit_Ampel_2; 
+      U     #i_Quit_Ampel_3; 
+      U(    ; 
+      U     #t_Prg1_Nicht_Null; 
+      U(    ; 
+      L     DW#16#1; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg2_Nicht_Null; 
+      U(    ; 
+      L     DW#16#2; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg3_Nicht_Null; 
+      U(    ; 
+      L     DW#16#3; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      )     ; 
+      L     S5T#250MS; 
+      SE    T    503; 
+      NOP   0; 
+      NOP   0; 
+      NOP   0; 
+      U     T    503; 
+      =     #o_Ampel_4; 
+      U     L     58.0; 
+      U     #i_Quit_Ampel_1; 
+      U     #i_Quit_Ampel_2; 
+      U     #i_Quit_Ampel_3; 
+      U     #i_Quit_Ampel_4; 
+      U(    ; 
+      U     #t_Prg1_Nicht_Null; 
+      U(    ; 
+      L     DW#16#1; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg2_Nicht_Null; 
+      U(    ; 
+      L     DW#16#2; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      O     ; 
+      U     #t_Prg3_Nicht_Null; 
+      U(    ; 
+      L     DW#16#3; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      )     ; 
+      L     S5T#250MS; 
+      SE    T    504; 
+      NOP   0; 
+      NOP   0; 
+      NOP   0; 
+      U     T    504; 
+      =     #o_Ampel_5; 
+NETWORK
+TITLE =Auftrag 1
+
+      L     DW#16#1; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      =     L     58.0; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_1.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_1.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_1.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_1.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_1.A1; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_21; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_1.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_1.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_1.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_1.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_1.A2; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_22; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_1.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_1.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_1.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_1.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_1.A3; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_23; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_1.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_1.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_1.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_1.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_1.A4; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_24; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_1.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_1.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_1.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_1.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_1.A5; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_1; 
+NETWORK
+TITLE =Auftrag 2
+
+      L     DW#16#2; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      =     L     58.0; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_2.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_2.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_2.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_2.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_2.A1; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_17; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_2.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_2.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_2.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_2.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_2.A2; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_18; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_2.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_2.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_2.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_2.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_2.A3; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_19; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_2.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_2.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_2.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_2.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_2.A4; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_20; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_2.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_2.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_2.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_2.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_2.A5; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Slave_Ziel.Adresse_3; 
+NETWORK
+TITLE =Auftrag 3
+
+      U     #t_false; 
+      U(    ; 
+      L     DW#16#3; 
+      L     #i_Auftrag; 
+      ==D   ; 
+      )     ; 
+      =     L     58.0; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_3.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_3.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_3.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_3.A1; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_3.A1; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     M      0.3; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_3.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_3.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_3.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_3.A2; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_3.A2; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     M      0.3; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_3.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_3.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_3.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_3.A3; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_3.A3; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     M      0.3; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_3.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_3.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_3.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_3.A4; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_3.A4; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     M      0.3; 
+      U     L     58.0; 
+      U(    ; 
+      U     #o_Ampel_1; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      L     #t_ML_Kennung_1; 
+      L     #t_Programm_3.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_2; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      L     #t_ML_Kennung_2; 
+      L     #t_Programm_3.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_3; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      L     #t_ML_Kennung_3; 
+      L     #t_Programm_3.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_4; 
+      UN    #i_Quit_Ampel_4; 
+      U(    ; 
+      L     #t_ML_Kennung_4; 
+      L     #t_Programm_3.A5; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U     #o_Ampel_5; 
+      UN    #i_Quit_Ampel_5; 
+      U(    ; 
+      L     #t_ML_Kennung_5; 
+      L     #t_Programm_3.A5; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     M      0.3; 
+NETWORK
+TITLE =Alles Auftrag
+
+      L     LD    48; 
+      L     MD    50; 
+      OD    ; 
+      T     MD    50; 
+      NOP   0; 
+NETWORK
+TITLE =Auftrag kopiren
+
+      U     M      0.1; 
+      =     L     58.0; 
+      U     L     58.0; 
+      UN    #t_PY_fertig; 
+      SPBNB _001; 
+      L     LD    48; 
+      T     #o_Ziel; 
+_001: NOP   0; 
+      U     L     58.0; 
+      U     #t_PY_fertig; 
+      SPBNB _002; 
+      L     MD    50; 
+      T     #o_Ziel; 
+_002: NOP   0; 
+NETWORK
+TITLE =Fehler
+
+      U(    ; 
+      L     DW#16#0; 
+      L     #i_Auftrag; 
+      <>D   ; 
+      )     ; 
+      U(    ; 
+      ON    #t_ML_Nicht_Null; 
+      ON    #t_Prg1_Nicht_Null; 
+      ON    #t_Prg2_Nicht_Null; 
+      O     ; 
+      UN    #t_Prg3_Nicht_Null; 
+      U     #t_false; 
+      )     ; 
+      O(    ; 
+      L     DW#16#2; 
+      L     #i_Auftrag; 
+      <D    ; 
+      )     ; 
+      O     ; 
+      UN    #i_Quit_Ampel_1; 
+      U(    ; 
+      O     #i_Quit_Ampel_2; 
+      O     #i_Quit_Ampel_3; 
+      O     #i_Quit_Ampel_4; 
+      O     #i_Quit_Ampel_5; 
+      )     ; 
+      O     ; 
+      UN    #i_Quit_Ampel_2; 
+      U(    ; 
+      O     #i_Quit_Ampel_3; 
+      O     #i_Quit_Ampel_4; 
+      O     #i_Quit_Ampel_5; 
+      )     ; 
+      O     ; 
+      UN    #i_Quit_Ampel_3; 
+      U(    ; 
+      O     #i_Quit_Ampel_4; 
+      O     #i_Quit_Ampel_5; 
+      )     ; 
+      O     ; 
+      UN    #i_Quit_Ampel_4; 
+      U     #i_Quit_Ampel_5; 
+      =     #o_Fehler; 
+NETWORK
+TITLE =Adressregister zurückspielen
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+      L     #t_ar1_backup; 
+      LAR1  ; 
+      L     #t_ar2_backup; 
+      LAR2  ; 
+
+
+END_FUNCTION
+

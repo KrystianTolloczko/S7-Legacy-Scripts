@@ -1,0 +1,76 @@
+FUNCTION FC 1220 : VOID
+TITLE =FC Latching Coil
+//Author: K.T.
+//
+//This function allows to use latching relay in OB/FB/FC blocks.
+//When the input I_Impuls is switched on then switched off, O_Output remains in 
+//its last "high" state. Signal I_Reset clears pernamently all of the variables.
+//Input byte I_Marker is used as logical memory. 
+AUTHOR : 'K.T.'
+VERSION : 0.1
+
+
+VAR_INPUT
+  I_Impuls : BOOL ;	
+  I_Reset : BOOL ;	
+END_VAR
+VAR_OUTPUT
+  O_Output : BOOL ;	
+END_VAR
+VAR_IN_OUT
+  I_Marker : BYTE ;	
+END_VAR
+VAR_TEMP
+  T : ARRAY  [0 .. 7 ] OF BOOL ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Inputs
+
+
+      L     #I_Marker; 
+      T     LB     0; 
+
+NETWORK
+TITLE =Imput signal
+
+      U     #I_Impuls; 
+      FP    #T[0]; 
+      =     #T[1]; 
+NETWORK
+TITLE =Main instructions
+
+
+
+      U     #T[1]; 
+      UN    #T[2]; 
+      O     ; 
+      UN    #T[1]; 
+      U     #T[2]; 
+      =     #T[2]; 
+NETWORK
+TITLE =Reset signal
+
+      U     #I_Reset; 
+      FP    #T[3]; 
+      R     #T[2]; 
+NETWORK
+TITLE =Outputs
+
+
+      L     LB     0; 
+      T     #I_Marker; 
+
+      U     #T[2]; 
+      =     #O_Output; 
+
+NETWORK
+TITLE =Saving RLO in BR Register
+
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+END_FUNCTION
+

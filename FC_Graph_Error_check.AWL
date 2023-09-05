@@ -1,0 +1,71 @@
+FUNCTION FC 1160 : VOID
+TITLE =Graph Error pruefen
+AUTHOR : 'K.T.'
+VERSION : 0.1
+
+
+VAR_INPUT
+  E_Station_Anzahl : INT ;	//Station Anzahl in der DB180
+END_VAR
+VAR_TEMP
+  T_AR1 : DWORD ;	
+  t_Schleife : INT ;	
+  t_Quelle : WORD ;	
+  t_Anzahl : WORD ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Sicherung Inhalte AR1
+
+      TAR1  #T_AR1; 
+
+      CLR   ; 
+      SAVE  ; 
+
+NETWORK
+TITLE =Umwandlung in WORD
+
+      L     180; // DB_SK_ORGANISATION
+      T     #t_Quelle; 
+
+      L     #E_Station_Anzahl; // Anzahl der Stationen in DB180
+      T     #t_Anzahl; 
+
+NETWORK
+TITLE =Vergleichsschleife
+
+      AUF   DB [#t_Quelle]; 
+
+      L     1; // Address Byte Nr 1
+      SLD   3; 
+      LAR1  ; 
+
+      L     #t_Anzahl; 
+      L     4; // HAND, GST, AUTO 1, AUTO 2
+      *I    ; 
+A001: T     #t_Schleife; 
+
+      U     DBX [AR1,P#0.0]; 
+      SPB   Err; 
+
+      +AR1  P#4.0; //um 4 Bytes erhöhen
+
+      L     #t_Schleife; 
+      LOOP  A001; 
+
+      SPA   Ende; 
+
+Err:  SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+Ende: NOP   0; 
+
+NETWORK
+TITLE =Restaurierung AR1
+
+      LAR1  #T_AR1; 
+
+      BE    ; 
+END_FUNCTION
+

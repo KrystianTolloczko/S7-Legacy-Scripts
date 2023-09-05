@@ -1,0 +1,221 @@
+FUNCTION FC 595 : VOID
+TITLE =Verwaltung Nacharbeitsplatz
+AUTHOR : 'K.T.'
+VERSION : 0.4
+
+
+VAR_INPUT
+  i_DB_REP : INT ;	//Anzahl der DB REP
+  i_DB_REFERENZ : INT ;	//Anzahl der DB Referenz
+END_VAR
+VAR_TEMP
+  t_ar1_backup : DWORD ;	
+  t_ar2_backup : DWORD ;	
+  t_true : BOOL ;	
+  t_false : BOOL ;	
+  t_Moby_DB : WORD ;	
+  t_Referenz_DB : WORD ;	
+  t_REP_DB : WORD ;	
+  t_loopcounter : BYTE ;	
+  t_Station_Nr_byte : INT ;	
+  t_ret_value : INT ;	
+  t_dummy_2 : INT ;	
+  t_record : ANY ;	
+  t_record_2 : ANY ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern u. Eins-/Nullmerker erzeugen
+
+      TAR1  #t_ar1_backup; // Adressregister 1 sichern
+      TAR2  #t_ar2_backup; // Adressregister 1 sichern
+
+      SET   ; 
+      =     #t_true; // internen '1'-Merker bilden
+
+      CLR   ; 
+      =     #t_false; // internen '0'-Merker bilden
+
+
+NETWORK
+TITLE =Datenbausteine umkopieren und Moby DB aufschlagen
+
+
+      L     #i_DB_REFERENZ; 
+      T     #t_Referenz_DB; 
+
+      L     #i_DB_REP; 
+      T     #t_REP_DB; 
+
+NETWORK
+TITLE =Funktionsparameter eintüten
+
+
+      L     10; 
+      T     #t_Station_Nr_byte; 
+
+NETWORK
+TITLE =Main loop
+
+
+      L     80; 
+sLp1: T     #t_loopcounter; 
+
+      AUF   DB [#t_REP_DB]; 
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      UN    DB916.DBX    1.5; 
+      UN    DB916.DBX    1.4; 
+      UN    DBX [AR1,P#196.0]; // Station IO 
+      U     DBX [AR1,P#186.0]; // IO Quit
+      SPBN  sLp2; 
+
+      SET   ; 
+      =     DBX [AR1,P#196.0]; 
+
+NETWORK
+TITLE =Daten kopieren DB Referenz
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     5; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_Referenz_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_Station_Nr_byte; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR2,P#1.0]; 
+      L     5; 
+      T     LW [AR2,P#2.0]; 
+      L     #t_Referenz_DB; 
+      T     LW [AR2,P#4.0]; 
+      L     0; 
+      SLD   3; 
+      T     LD [AR2,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR2,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record_2);
+
+NETWORK
+TITLE =Telegramm sender
+
+      AUF   DB [#t_Referenz_DB]; 
+      L     0; 
+      SLD   3; 
+      LAR2  ; 
+
+      L     DBB [AR2,P#1.0]; 
+      L     B#16#FA; 
+      ==I   ; 
+      SPBN  sJn1; 
+
+      SET   ; 
+      S     DB916.DBX    1.5; 
+
+sJn1: L     DBB [AR2,P#1.0]; 
+      L     B#16#64; 
+      ==I   ; 
+      SPBN  sJn2; 
+
+      SET   ; 
+      S     DB916.DBX    1.4; 
+
+sJn2: NOP   0; 
+
+NETWORK
+TITLE =Main Loop Ende
+
+sLp2: +AR1  P#0.1; 
+
+      L     10; 
+      L     #t_Station_Nr_byte; 
+      +I    ; 
+      T     #t_Station_Nr_byte; 
+
+      L     #t_loopcounter; 
+      LOOP  sLp1; 
+
+NETWORK
+TITLE =Daten löschen
+
+      AUF   DB [#t_REP_DB]; 
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     80; 
+sLp3: T     #t_loopcounter; 
+
+      UN    DBX [AR1,P#186.0]; // IO Quit
+      U     DBX [AR1,P#196.0]; // Station IO
+      SPBN  sLp4; 
+
+      CLR   ; 
+      =     DBX [AR1,P#196.0]; 
+
+sLp4: +AR1  P#0.1; 
+
+      L     #t_loopcounter; 
+      LOOP  sLp3; 
+
+
+      UN    DB916.DBX    1.4; 
+      UN    DB916.DBX    1.5; 
+      SPBN  sJn3; 
+
+      L     B#16#0; 
+      T     #t_dummy_2; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     5; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_Referenz_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     0; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   21 (
+           BVAL                     := #t_dummy_2,
+           RET_VAL                  := #t_ret_value,
+           BLK                      := #t_record);
+
+sJn3: NOP   0; 
+NETWORK
+TITLE =Adressregister wiederherstellen & Bausteinende 
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+      L     #t_ar1_backup; 
+      LAR1  ; 
+      L     #t_ar2_backup; 
+      LAR2  ; 
+      BEA   ; 
+
+END_FUNCTION
+

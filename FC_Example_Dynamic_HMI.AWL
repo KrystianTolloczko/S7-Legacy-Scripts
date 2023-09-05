@@ -1,0 +1,903 @@
+FUNCTION FC 640 : VOID
+TITLE =Verwaltung Nacharbeitsplatz
+{ S7_language := '7(1) German (Germany)  16.03.2012  13:20:46' }
+AUTHOR : 'KT'
+VERSION : 0.4
+
+
+VAR_INPUT
+  i_EN : BOOL ;	
+  i_IO_Quit : BOOL ;	//Eingang muss als positive Flanke anparametriert werden
+  i_DB_Moby : INT ;	
+  i_DB_REFERENZ : INT ;	
+  i_DB_REP : INT ;	
+  i_rel_Matrix_1 : DWORD ;	
+  i_rel_Matrix_2 : DWORD ;	
+  i_rel_Matrix_3 : DWORD ;	
+END_VAR
+VAR_OUTPUT
+  o_Alle_St_IO : BOOL ;	
+END_VAR
+VAR_TEMP
+  t_ar1_backup : DWORD ;	
+  t_ar2_backup : DWORD ;	
+  t_true : BOOL ;	
+  t_false : BOOL ;	
+  t_Moby_DB : WORD ;	
+  t_Referenz_DB : WORD ;	
+  t_REP_DB : WORD ;	
+  t_record : ANY ;	
+  t_ret_value : INT ;	
+  t_loopcounter : BYTE ;	
+  t_startadresse : INT ;	
+  t_relevant_1 : DWORD ;	
+  t_relevant_2 : DWORD ;	
+  t_relevant_3 : DWORD ;	
+  t_stationsbyte : BYTE ;	
+  t_stationsnummer : BYTE ;	
+  t_ar1_save : INT ;	
+  t_zaehler : INT ;	
+  t_dummy : BYTE ;	
+  t_anwahl : INT ;	
+  t_start_mds : INT ;	
+  t_start_station : INT ;	
+  t_offset_nio_stationen : INT ;	
+  t_adr_stationsdaten : INT ;	
+  t_seite_nio_stationen : INT ;	
+  t_markierte_station : INT ;	
+  t_angewaehlte_station : BYTE ;	
+  t_record_2 : ANY ;	
+  t_dummy_2 : BYTE ;	
+  t_adr_stationsbyte : INT ;	
+  t_adr_q_daten : INT ;	
+  t_maxwert : INT ;	
+  t_anzahl_q_daten : BYTE ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern u. Eins-/Nullmerker erzeugen
+
+      TAR1  #t_ar1_backup; // Adressregister 1 sichern
+      TAR2  #t_ar2_backup; // Adressregister 1 sichern
+
+      SET   ; 
+      =     #t_true; // internen '1'-Merker bilden
+
+      CLR   ; 
+      =     #t_false; // internen '0'-Merker bilden
+
+
+NETWORK
+TITLE =Datenbausteine umkopieren und Moby DB aufschlagen
+
+      L     #i_DB_Moby; 
+      T     #t_Moby_DB; 
+
+      L     #i_DB_REFERENZ; 
+      T     #t_Referenz_DB; 
+
+      L     #i_DB_REP; 
+      T     #t_REP_DB; 
+NETWORK
+TITLE =Funktionsparameter eintüten
+
+      L     3238; 
+      T     #t_start_mds; 
+
+      L     114; 
+      T     #t_start_station; 
+
+      L     26; 
+      T     #t_offset_nio_stationen; 
+
+NETWORK
+TITLE =NIO Station herausfiltern
+
+      L     0; 
+      T     #t_dummy; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     80; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_REP_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_offset_nio_stationen; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+
+      CALL SFC   21 (
+           BVAL                     := #t_dummy,
+           RET_VAL                  := #t_ret_value,
+           BLK                      := #t_record);
+
+      L     #t_start_mds; 
+      T     #t_startadresse; 
+
+      L     #t_start_station; 
+      T     #t_stationsnummer; 
+
+      L     #i_rel_Matrix_1; 
+      T     #t_relevant_1; 
+      L     #i_rel_Matrix_2; 
+      T     #t_relevant_2; 
+      L     #i_rel_Matrix_3; 
+      T     #t_relevant_3; 
+
+      U     #i_EN; // Ver 0.2 -- Enable/Disable NIO Stations checking 
+      SPBN  mEn; 
+
+      LAR2  P##t_relevant_1; 
+
+      L     #t_startadresse; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     0; 
+      T     #t_zaehler; 
+
+      L     80; 
+m002: T     #t_loopcounter; 
+
+      AUF   DB [#t_Moby_DB]; 
+
+      U(    ; 
+      L     DBB [AR1,P#0.0]; 
+      L     1; 
+      <>I   ; 
+      )     ; 
+      U(    ; // Ver 0.3 -- Station abgewaehlt
+      L     DBB [AR1,P#0.0]; 
+      L     16; 
+      <>I   ; 
+      )     ; 
+      U     L [AR2,P#0.0]; 
+      SPBN  m001; 
+
+      TAR1  ; 
+      SRD   3; 
+      T     #t_ar1_save; 
+
+      L     DBB [AR1,P#0.0]; 
+      T     #t_stationsbyte; 
+
+      AUF   DB [#t_REP_DB]; 
+      L     #t_zaehler; 
+      L     2; 
+      *I    ; 
+      L     #t_offset_nio_stationen; // Offset im DB für NIO Stationen
+      +I    ; 
+      SLD   3; 
+      LAR1  ; 
+
+
+// Stationsbyte bei Mehrdeutigkeit für HMI Anzeige aufbereiten
+
+      UN    DBX [AR1,P#0.0]; 
+      UN    DBX [AR1,P#0.4]; 
+      SPBN  m003; 
+      L     2; 
+      T     #t_stationsbyte; 
+
+m003: L     #t_stationsbyte; 
+      T     DBB [AR1,P#0.0]; 
+
+      L     #t_stationsnummer; 
+      T     DBB [AR1,P#1.0]; 
+
+      L     #t_zaehler; 
+      L     1; 
+      +I    ; 
+      T     #t_zaehler; 
+
+      L     #t_ar1_save; 
+      SLD   3; 
+      LAR1  ; 
+
+m001: NOP   0; 
+
+      +AR1  P#1.0; 
+      +AR2  P#0.1; 
+
+      L     #t_stationsnummer; 
+      L     1; 
+      +I    ; 
+      T     #t_stationsnummer; 
+
+
+      L     #t_loopcounter; 
+      LOOP  m002; 
+
+mEn:  NOP   0; 
+NETWORK
+TITLE =Jeweils 10 NIO Stationen anzeigen
+
+      AUF   DB [#t_REP_DB]; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+
+      L     DBW [AR1,P#2.0]; 
+      L     1; 
+      ==I   ; 
+      SPBN  chk2; 
+
+      L     DBW [AR1,P#2.0]; 
+      T     #t_anwahl; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     20; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_REP_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_anwahl; 
+      L     20; 
+      *I    ; 
+      L     20; 
+      -I    ; 
+      L     #t_offset_nio_stationen; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := P#DB915.DBX 6.0 BYTE 20);
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+chk2: L     DBW [AR1,P#2.0]; 
+      L     2; 
+      ==I   ; 
+      SPBN  chk3; 
+
+      L     DBW [AR1,P#2.0]; 
+      T     #t_anwahl; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     20; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_REP_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_anwahl; 
+      L     20; 
+      *I    ; 
+      L     20; 
+      -I    ; 
+      L     #t_offset_nio_stationen; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := P#DB915.DBX 6.0 BYTE 20);
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+chk3: L     DBW [AR1,P#2.0]; 
+      L     3; 
+      ==I   ; 
+      SPBN  chk4; 
+
+      L     DBW [AR1,P#2.0]; 
+      T     #t_anwahl; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     20; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_REP_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_anwahl; 
+      L     20; 
+      *I    ; 
+      L     20; 
+      -I    ; 
+      L     #t_offset_nio_stationen; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := P#DB915.DBX 6.0 BYTE 20);
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+chk4: L     DBW [AR1,P#2.0]; 
+      L     4; 
+      ==I   ; 
+      SPBN  chk5; 
+
+      L     DBW [AR1,P#2.0]; 
+      T     #t_anwahl; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     20; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_REP_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_anwahl; 
+      L     20; 
+      *I    ; 
+      L     20; 
+      -I    ; 
+      L     #t_offset_nio_stationen; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := P#DB915.DBX 6.0 BYTE 20);
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+chk5: L     DBW [AR1,P#2.0]; 
+      L     5; 
+      ==I   ; 
+      SPBN  chk6; 
+
+      L     DBW [AR1,P#2.0]; 
+      T     #t_anwahl; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     20; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_REP_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_anwahl; 
+      L     20; 
+      *I    ; 
+      L     20; 
+      -I    ; 
+      L     #t_offset_nio_stationen; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := P#DB915.DBX 6.0 BYTE 20);
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+chk6: L     DBW [AR1,P#2.0]; 
+      L     6; 
+      ==I   ; 
+      SPBN  chk7; 
+
+      L     DBW [AR1,P#2.0]; 
+      T     #t_anwahl; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     20; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_REP_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_anwahl; 
+      L     20; 
+      *I    ; 
+      L     20; 
+      -I    ; 
+      L     #t_offset_nio_stationen; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := P#DB915.DBX 6.0 BYTE 20);
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+chk7: L     DBW [AR1,P#2.0]; 
+      L     7; 
+      ==I   ; 
+      SPBN  chk8; 
+
+      L     DBW [AR1,P#2.0]; 
+      T     #t_anwahl; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     20; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_REP_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_anwahl; 
+      L     20; 
+      *I    ; 
+      L     20; 
+      -I    ; 
+      L     #t_offset_nio_stationen; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := P#DB915.DBX 6.0 BYTE 20);
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+chk8: L     DBW [AR1,P#2.0]; 
+      L     8; 
+      ==I   ; 
+      SPBN  nope; 
+
+      L     DBW [AR1,P#2.0]; 
+      T     #t_anwahl; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     20; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_REP_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_anwahl; 
+      L     20; 
+      *I    ; 
+      L     20; 
+      -I    ; 
+      L     #t_offset_nio_stationen; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := P#DB915.DBX 6.0 BYTE 20);
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+nope: NOP   0; 
+
+// Min-/Maxwert für Anwahlnummer festlegen
+
+      L     8; 
+      T     #t_maxwert; 
+
+      L     #t_offset_nio_stationen; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     DBB [AR1,P#141.0]; 
+      L     B#16#0; 
+      <>I   ; 
+      SPBN  _gr2; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     8; 
+      T     #t_maxwert; 
+
+      SPA   ok_0; 
+
+_gr2: L     DBB [AR1,P#121.0]; 
+      L     B#16#0; 
+      <>I   ; 
+      SPBN  _gr3; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     7; 
+      T     #t_maxwert; 
+
+      SPA   ok_0; 
+
+
+_gr3: L     DBB [AR1,P#101.0]; 
+      L     B#16#0; 
+      <>I   ; 
+      SPBN  _gr4; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     6; 
+      T     #t_maxwert; 
+
+      SPA   ok_0; 
+
+_gr4: L     DBB [AR1,P#81.0]; 
+      L     B#16#0; 
+      <>I   ; 
+      SPBN  _gr5; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     5; 
+      T     #t_maxwert; 
+
+      SPA   ok_0; 
+
+_gr5: L     DBB [AR1,P#61.0]; 
+      L     B#16#0; 
+      <>I   ; 
+      SPBN  _gr6; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     4; 
+      T     #t_maxwert; 
+
+      SPA   ok_0; 
+
+_gr6: L     DBB [AR1,P#41.0]; 
+      L     B#16#0; 
+      <>I   ; 
+      SPBN  _gr7; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     3; 
+      T     #t_maxwert; 
+
+      SPA   ok_0; 
+
+_gr7: L     DBB [AR1,P#21.0]; 
+      L     B#16#0; 
+      <>I   ; 
+      SPBN  _gr8; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     2; 
+      T     #t_maxwert; 
+
+      SPA   ok_0; 
+
+_gr8: L     1; 
+      T     #t_maxwert; 
+
+
+
+ok_0: L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     #t_maxwert; 
+
+      L     DBW [AR1,P#2.0]; 
+      L     1; 
+      <I    ; 
+      SPBN  ok_1; 
+
+      L     #t_maxwert; 
+      T     DBW [AR1,P#2.0]; 
+
+ok_1: L     DBW [AR1,P#2.0]; 
+      L     #t_maxwert; 
+      >I    ; 
+      SPBN  ok_2; 
+
+      L     1; 
+      T     DBW [AR1,P#2.0]; 
+
+ok_2: NOP   0; 
+
+// Min-/Maxwert für markierte Station festlegen
+
+      L     DBW [AR1,P#4.0]; 
+      L     1; 
+      <I    ; 
+      SPBN  ok_3; 
+
+      L     10; 
+      T     DBW [AR1,P#4.0]; 
+
+ok_3: L     DBW [AR1,P#4.0]; 
+      L     10; 
+      >I    ; 
+      SPBN  ok_4; 
+
+      L     1; 
+      T     DBW [AR1,P#4.0]; 
+
+ok_4: NOP   0; 
+
+
+
+NETWORK
+TITLE =Alle stationen I.O. -- ver. 0.4
+
+      U     #i_EN; 
+      U(    ; 
+      L     DB915.DBB   27; 
+      L     0; 
+      ==I   ; 
+      )     ; 
+      =     #o_Alle_St_IO; 
+
+NETWORK
+TITLE =Markierte Station identifizieren und Adresse Q-Daten klarmachen
+
+      L     DBW [AR1,P#2.0]; 
+      T     #t_seite_nio_stationen; 
+
+
+      L     DBW [AR1,P#4.0]; 
+      T     #t_markierte_station; 
+
+      L     #t_markierte_station; 
+      L     2; 
+      *I    ; 
+      L     1; 
+      -I    ; 
+      L     6; 
+      +I    ; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     DBB [AR1,P#0.0]; 
+      T     #t_angewaehlte_station; 
+
+
+      UN    DB915.DBX    1.4; 
+      UN    DB915.DBX    1.5; 
+      SPBN  nix; 
+
+      AUF   DB [#t_Referenz_DB]; 
+
+      L     B#16#0; 
+      T     #t_dummy_2; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     5; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_Referenz_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     0; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   21 (
+           BVAL                     := #t_dummy_2,
+           RET_VAL                  := #t_ret_value,
+           BLK                      := #t_record);
+
+      L     10; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     80; 
+m006: T     #t_loopcounter; 
+
+      L     DBB [AR1,P#0.0]; 
+      L     #t_angewaehlte_station; 
+      ==I   ; 
+      SPBN  m005; 
+
+      TAR1  ; 
+      SRD   3; 
+      T     #t_ar1_save; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR1,P#1.0]; 
+      L     5; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_Referenz_DB; 
+      T     LW [AR1,P#4.0]; 
+      L     #t_ar1_save; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#5; 
+      T     LB [AR2,P#1.0]; 
+      L     5; 
+      T     LW [AR2,P#2.0]; 
+      L     #t_Referenz_DB; 
+      T     LW [AR2,P#4.0]; 
+      L     0; 
+      SLD   3; 
+      T     LD [AR2,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR2,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record_2);
+
+      SPA   m007; 
+
+m005: TAR1  ; 
+      SRD   3; 
+      L     10; 
+      +I    ; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     #t_loopcounter; 
+      LOOP  m006; 
+
+m007: NOP   0; 
+
+NETWORK
+TITLE =IO Quittierung verarbeiten & Q Daten senden anstoßen
+
+nix:  AUF   DB [#t_Referenz_DB]; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     0; 
+      L     DBB [AR1,P#0.0]; 
+      L     #t_start_mds; 
+      +I    ; 
+      L     #t_start_station; 
+      -I    ; 
+      T     #t_adr_stationsbyte; 
+
+      L     DBW [AR1,P#8.0]; 
+      T     #t_adr_q_daten; 
+
+      L     DBB [AR1,P#1.0]; 
+      T     #t_anzahl_q_daten; 
+
+// IO Quittierung verarbeiten und Telegramm ans Zellsystem anstoßen
+
+      U     #i_IO_Quit; 
+      SPBN  m008; 
+
+      AUF   DB [#t_Moby_DB]; 
+      L     #t_adr_stationsbyte; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     B#16#1; 
+      T     DBB [AR1,P#0.0]; // Stationsbyte IO schreiben
+
+      L     #t_adr_q_daten; 
+      SLD   3; 
+      LAR1  ; 
+
+      SET   ; 
+      S     DBX [AR1,P#1.2]; // Reparatur-IO setzen
+
+      AUF   DB [#t_REP_DB]; 
+
+      L     0; 
+      SLD   3; 
+      LAR1  ; 
+
+      L     #t_anzahl_q_daten; 
+      L     B#16#FA; 
+      ==I   ; 
+      SPBN  hap; 
+
+      SET   ; 
+      S     DBX [AR1,P#1.5]; // Telegramm für Automatikstation anstoßen
+
+hap:  L     #t_anzahl_q_daten; 
+      L     B#16#64; 
+      ==I   ; 
+      SPBN  m008; 
+
+      SET   ; 
+      S     DBX [AR1,P#1.4]; // Telegramm für Handarbeitsplatz anstoßen
+
+m008: NOP   0; 
+
+NETWORK
+TITLE =Adressregister wiederherstellen & Bausteinende 
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+      L     #t_ar1_backup; 
+      LAR1  ; 
+      L     #t_ar2_backup; 
+      LAR2  ; 
+      BEA   ; 
+
+END_FUNCTION
+

@@ -1,0 +1,353 @@
+FUNCTION FC 966 : VOID
+TITLE =Kamera Merkmalen Verglichen
+//Author: K.T.
+//
+//V0.1 - First release
+AUTHOR : 'K.T.'
+VERSION : 0.3
+
+
+VAR_INPUT
+  e_Kamera_daten_1 : BYTE ;	
+  e_Kamera_daten_2 : BYTE ;	
+END_VAR
+VAR_OUTPUT
+  a_Moby_Daten : BYTE ;	
+  a_Fehler : BOOL ;	
+END_VAR
+VAR_TEMP
+  t_ar1_backup : DWORD ;	
+  t_ar2_backup : DWORD ;	
+  t_true : BOOL ;	
+  t_false : BOOL ;	
+  t_Kam_Byte_in_1 : BYTE ;	
+  t_Kam_Byte_in_2 : BYTE ;	
+  t_Moby_Daten : STRUCT 	
+   _IO : BOOL ;	
+   _NIO : BOOL ;	
+   _Abgewaehlt : BOOL ;	
+   _Byte_3 : BOOL ;	
+   _Byte_4 : BOOL ;	
+   _Byte_5 : BOOL ;	
+   _Byte_6 : BOOL ;	
+   _Byte_7 : BOOL ;	
+  END_STRUCT ;	
+  t_Kam_IO : BYTE ;	
+  t_Kam_NIO : BYTE ;	
+  t_Kam_Abgewaelt : BYTE ;	
+  t_Kam_Nicht_Relevant : BYTE ;	
+  t_db_nr_quelle_1 : INT ;	
+  t_db_daten : WORD ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern u. Eins-/Nullmerker erzeugen
+
+      TAR1  #t_ar1_backup; // Adressregister 1 sichern
+      TAR2  #t_ar2_backup; // Adressregister 1 sichern
+
+      SET   ; 
+      =     #t_true; // internen '1'-Merker bilden
+
+      CLR   ; 
+      =     #t_false; // internen '0'-Merker bilden
+      =     #t_Moby_Daten._IO; 
+      =     #t_Moby_Daten._NIO; 
+      =     #t_Moby_Daten._Abgewaehlt; 
+      =     #t_Moby_Daten._Byte_3; 
+      =     #t_Moby_Daten._Byte_4; 
+      =     #t_Moby_Daten._Byte_5; 
+      =     #t_Moby_Daten._Byte_6; 
+      =     #t_Moby_Daten._Byte_7; 
+
+
+      L     B#16#0; 
+      T     #a_Moby_Daten; 
+
+
+
+      L     B#16#1; 
+      T     #t_Kam_IO; 
+      L     B#16#2; 
+      T     #t_Kam_NIO; 
+      L     B#16#3; 
+      T     #t_Kam_Abgewaelt; 
+      L     B#16#4; 
+      T     #t_Kam_Nicht_Relevant; 
+NETWORK
+TITLE =Eingang
+
+      U     #t_true; 
+      =     L     22.0; 
+      U     L     22.0; 
+      SPBNB _001; 
+      L     #e_Kamera_daten_1; 
+      T     #t_Kam_Byte_in_1; 
+_001: NOP   0; 
+      U     L     22.0; 
+      SPBNB _002; 
+      L     #e_Kamera_daten_2; 
+      T     #t_Kam_Byte_in_2; 
+_002: NOP   0; 
+NETWORK
+TITLE =Case 1
+//Kamera PC 1 - Merkmal – IO
+//Kamera PC 2 - Merkmal – IO
+//
+//Kamera PC 1 – Merkmal – IO
+//Kamera PC 2 - Merkmal – nicht relevant
+//
+//Kamera PC 1 – Merkmal – nicht relevant
+//Kamera PC 2 - Merkmal – IO
+      U     #t_true; 
+      U(    ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_IO; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_IO; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_IO; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_Nicht_Relevant; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_Nicht_Relevant; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_IO; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Moby_Daten._IO; 
+NETWORK
+TITLE =Case 2
+//Kamera PC 1 - Merkmal – NIO
+//Kamera PC 2 - Merkmal – NIO
+//
+//Kamera PC 1 – Merkmal – NIO
+//Kamera PC 2 - Merkmal – nicht relevant
+//
+//Kamera PC 1 – Merkmal – nicht relevant
+//Kamera PC 2 - Merkmal – NIO
+      U     #t_true; 
+      U(    ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_NIO; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_IO; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_IO; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_NIO; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_NIO; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_Nicht_Relevant; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_Nicht_Relevant; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_NIO; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Moby_Daten._NIO; 
+NETWORK
+TITLE =Case 3
+//Kamera PC 1 - Merkmal – abgewählt
+//Kamera PC 2 - Merkmal – abgewählt
+//
+//Kamera PC 1 – Merkmal – nicht relevant
+//Kamera PC 2 - Merkmal – abgewählt
+//
+//Kamera PC 1 – Merkmal – abgewählt
+//Kamera PC 2 - Merkmal – nicht relevant
+      U     #t_true; 
+      U(    ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_Abgewaelt; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_Abgewaelt; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_Abgewaelt; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_Nicht_Relevant; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_Nicht_Relevant; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_Abgewaelt; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_Nicht_Relevant; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_Nicht_Relevant; 
+      ==I   ; 
+      )     ; 
+      )     ; 
+      =     #t_Moby_Daten._Abgewaehlt; 
+NETWORK
+TITLE =Case 4
+//Kamera PC 1 - Merkmal – IO
+//Kamera PC 2 - Merkmal – Abgewaehlt
+//
+//Kamera PC 1 – Merkmal – NIO
+//Kamera PC 2 - Merkmal – Abgewaehlt
+//
+//Kamera PC 1 - Merkmal – Abgewaehlt
+//Kamera PC 2 - Merkmal – IO
+//
+//Kamera PC 1 – Merkmal – Abgewaehlt
+//Kamera PC 2 - Merkmal – NIO
+      U     #t_true; 
+      U(    ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_IO; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_Abgewaelt; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_Abgewaelt; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_IO; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_NIO; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_Abgewaelt; 
+      ==I   ; 
+      )     ; 
+      O     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     #t_Kam_Abgewaelt; 
+      ==I   ; 
+      )     ; 
+      U(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     #t_Kam_NIO; 
+      ==I   ; 
+      )     ; 
+      O(    ; 
+      L     #t_Kam_Byte_in_1; 
+      L     B#16#4; 
+      >I    ; 
+      )     ; 
+      O(    ; 
+      L     #t_Kam_Byte_in_2; 
+      L     B#16#4; 
+      >I    ; 
+      )     ; 
+      )     ; 
+      =     #a_Fehler; 
+NETWORK
+TITLE =Ausgang
+
+      U     #t_true; 
+      =     L     22.0; 
+      U     L     22.0; 
+      UN    #a_Fehler; 
+      SPBNB _003; 
+      L     LB    12; 
+      T     #a_Moby_Daten; 
+_003: NOP   0; 
+      U     L     22.0; 
+      U     #a_Fehler; 
+      SPBNB _004; 
+      L     B#16#0; 
+      T     #a_Moby_Daten; 
+_004: NOP   0; 
+NETWORK
+TITLE =Adressregister zurückspielen
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+      L     #t_ar1_backup; 
+      LAR1  ; 
+      L     #t_ar2_backup; 
+      LAR2  ; 
+
+
+END_FUNCTION
+

@@ -1,0 +1,327 @@
+FUNCTION FC 951 : VOID
+TITLE =Zuordnung
+VERSION : 0.4
+
+
+VAR_INPUT
+  i_neuen_Datensatz : BOOL ;	
+  i_DB_Moby : INT ;	
+  i_DB_Register : INT ;	
+END_VAR
+VAR_TEMP
+  t_ar1_backup : DWORD ;	
+  t_ar2_backup : DWORD ;	
+  t_true : BOOL ;	
+  t_false : BOOL ;	
+  t_versatz_datensaetze : INT ;	
+  t_anzahl_nutzdaten : INT ;	
+  t_db_moby : WORD ;	
+  t_db_register : WORD ;	
+  t_daten_teil_1 : ARRAY  [1 .. 25 ] OF CHAR ;	
+  t_daten_teil_2 : ARRAY  [1 .. 8 ] OF CHAR ;	
+  t_daten_teil_3 : ARRAY  [1 .. 2 ] OF CHAR ;	
+  t_daten_teil_4 : DATE_AND_TIME ;	
+  t_daten_teil_5 : BYTE ;	
+  t_record : ANY ;	
+  t_ret_value : INT ;	
+  t_record_2 : ANY ;	
+  t_loopcounter : INT ;	
+  t_start_1 : INT ;	
+  t_start_2 : INT ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern u. Eins-/Nullmerker erzeugen
+
+      TAR1  #t_ar1_backup; // Adressregister 1 sichern
+      TAR2  #t_ar2_backup; // Adressregister 1 sichern
+
+      SET   ; 
+      =     #t_true; // internen '1'-Merker bilden
+
+      CLR   ; 
+      =     #t_false; // internen '0'-Merker bilden
+
+NETWORK
+TITLE =Versatz zwischen den Daten
+
+
+      L     100; 
+      T     #t_versatz_datensaetze; 
+
+NETWORK
+TITLE =Datenbausteinnummern umladen
+
+      L     #i_DB_Moby; 
+      T     #t_db_moby; 
+
+      L     #i_DB_Register; 
+      T     #t_db_register; 
+
+NETWORK
+TITLE =Neuen Datensatz eintragen, Register schieben
+
+      U     #i_neuen_Datensatz; 
+      SPBN  m001; 
+
+// Motor ID
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     25; // Anzahl Bytes Motor ID
+      T     LW [AR1,P#2.0]; 
+      L     #t_db_moby; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     92; // Motor ID
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_daten_teil_1);
+
+// LT WT Nummer
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     8; // Anzahl Bytes LT WT Nummer
+      T     LW [AR1,P#2.0]; 
+      L     #t_db_moby; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     380; // LT WT Nummer
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_daten_teil_2);
+
+// LT WT Typ
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     2; // Anzahl Bytes LT Typ
+      T     LW [AR1,P#2.0]; 
+      L     #t_db_moby; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     14; // LT Typ
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_daten_teil_3);
+
+// Zeitstempel
+      CALL SFC    1 (// Datum
+           RET_VAL                  := #t_ret_value,
+           CDT                      := #t_daten_teil_4);
+
+// Set Zuordnung Anzeige
+      L     1; // Zuordnung Anzeige
+      T     #t_daten_teil_5; 
+
+
+// Daten im Zurordnungs DB weiterschieben
+// -------------------------------------------------------------
+      L     1800; // 19. Datensatz
+      T     #t_start_1; 
+
+      L     1900; // 20. Datensatz
+      T     #t_start_2; 
+
+      L     19; 
+m002: T     #t_loopcounter; 
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     #t_versatz_datensaetze; // Anzahl Bytes
+      T     LW [AR1,P#2.0]; 
+      L     #t_db_register; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     #t_start_1; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+
+      LAR2  P##t_record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     #t_versatz_datensaetze; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_db_register; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     #t_start_2; 
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record_2);
+
+      L     #t_start_1; 
+      L     #t_versatz_datensaetze; 
+      -I    ; 
+      T     #t_start_1; // Adr. für Datensatz verringern
+
+
+      L     #t_start_2; 
+      L     #t_versatz_datensaetze; 
+      -I    ; 
+      T     #t_start_2; // Adr. für Datensatz verringern
+
+
+      L     #t_loopcounter; 
+      LOOP  m002; 
+// -------------------------------------------------------------
+
+// Neuesten Datensatz eintragen
+
+// Motor ID
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     25; // Anzahl Bytes Motor ID
+      T     LW [AR1,P#2.0]; 
+      L     #t_db_register; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     0; // Motor ID
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_daten_teil_1,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record);
+
+// LT WT Nummer
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     8; // Anzahl Bytes LT WT Nummer
+      T     LW [AR1,P#2.0]; 
+      L     #t_db_register; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     26; // LT WT Nummer
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_daten_teil_2,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record);
+
+// LT WT Typ
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     2; // Anzahl Bytes LT WT Typ
+      T     LW [AR1,P#2.0]; 
+      L     #t_db_register; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     35; // LT WT Typ
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_daten_teil_3,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record);
+
+// Zeitstempel
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     8; // Anzahl Bytes Datum
+      T     LW [AR1,P#2.0]; 
+      L     #t_db_register; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     66; // Datum
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_daten_teil_4,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record);
+
+// Set Zuordnung Anzeige
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     1; // Anzahl Bytes Datum
+      T     LW [AR1,P#2.0]; 
+      L     #t_db_register; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     74; // Zuordnung Anzeige
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_daten_teil_5,
+           RET_VAL                  := #t_ret_value,
+           DSTBLK                   := #t_record);
+
+
+m001: NOP   0; 
+
+NETWORK
+TITLE =Adressregister zurückspielen
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+      L     #t_ar1_backup; 
+      LAR1  ; 
+      L     #t_ar2_backup; 
+      LAR2  ; 
+
+
+END_FUNCTION
+

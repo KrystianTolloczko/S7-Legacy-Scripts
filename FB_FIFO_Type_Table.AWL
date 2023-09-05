@@ -1,0 +1,1274 @@
+FUNCTION_BLOCK FB 960
+TITLE =Typentabelle
+//Author: K.T.
+//
+//Change notes (EN)
+//----------------------
+//2012-06-20 v0.1: First release
+//2012-06-22 v0.2: Searching Sachnummer in the Moby
+//2012-07-10 v0.3: Scanner integration
+//2012-10-24 v0.4: Type Number
+//2012-12-04 v0.5: Writing WT_Beladen in Hand
+//2012-06-26 v0.6: Daten loeschen button blocked
+//2013-12-13 v0.7: Coping the data to Memory Card
+//2014-01-20 v0.8: Output #a_Auftrag_Kopiert
+//2015-01-20 v0.9: Type Number check
+AUTHOR : 'K.T.'
+VERSION : 0.9
+
+
+VAR_INPUT
+  e_Anwahl : BOOL ;	
+  e_Funktionsfrg : BOOL ;	
+  e_Lesen_Erfolgreich : BOOL ;	
+  e_DB_Daten : INT ;	
+  e_DB_Anzaige : INT ;	
+  e_DB_Moby : INT ;	
+END_VAR
+VAR_OUTPUT
+  a_Seite_1 : BOOL ;	
+  a_Seite_2 : BOOL ;	
+  a_Seite_Bearbeitung : BOOL ;	
+  a_Sachnummer_Gefunden : BOOL ;	
+  a_Sachnummer_Fehlt : BOOL ;	
+  a_Auftrag_Kopiert : BOOL ;	
+END_VAR
+VAR
+  s_Taste_Auswahl : BOOL ;	
+  s_Taste_Bearbeitung : BOOL ;	
+  s_Taste_Oben : BOOL ;	
+  s_Taste_Unten : BOOL ;	
+  s_Taste_Neu_Typ : BOOL ;	
+  s_Taste_Loeschen : BOOL ;	
+  s_Teste_Manuell_Ueber : BOOL ;	
+  s_Taste_Schreiben : BOOL ;	
+  s_Anwahl : BOOL ;	
+  s_Funktionsfrg : BOOL ;	
+  s_Lesen_Erfolgreich : BOOL ;	
+  s_Reserve_12 : BOOL ;	
+  s_Reserve_13 : BOOL ;	
+  s_Aufrag_Kopiert : BOOL ;	
+  s_Sachnumer_ist_Null : BOOL ;	
+  s_Sachnumer_Gefunden : BOOL ;	
+  s_Sachnummer_von_Scanner : BOOL ;	
+  s_Cursor_Pos : INT ;	
+  s_Daten_Adresse : INT ;	
+  s_Cursor_Pos_Gefunden : INT ;	
+  s_Daten_Adresse_Gefunden : INT ;	
+  Daten_Suche_1 : STRUCT 	
+   ZK_SACHNR_1 : CHAR ;	//ZK-Sachnummer / Stelle 1
+   ZK_SACHNR_2 : CHAR ;	//ZK-Sachnummer / Stelle 2
+   ZK_SACHNR_3 : CHAR ;	//ZK-Sachnummer / Stelle 3
+   ZK_SACHNR_4 : CHAR ;	//ZK-Sachnummer / Stelle 4
+   ZK_SACHNR_5 : CHAR ;	//ZK-Sachnummer / Stelle 5
+   ZK_SACHNR_6 : CHAR ;	//ZK-Sachnummer / Stelle 6
+   ZK_SACHNR_7 : CHAR ;	//ZK-Sachnummer / Stelle 7
+   ZK_SACHNR_8 : CHAR ;	//ZK-Sachnummer / Stelle 8
+   ZK_SACHNR_9 : CHAR ;	//ZK-Sachnummer / Stelle 9
+   ZK_SACHNR_10 : CHAR ;	//ZK-Sachnummer / Stelle 10
+  END_STRUCT ;	
+  Daten_Suche_2 : STRUCT 	
+   ZK_TYP_1 : CHAR ;	
+   ZK_TYP_2 : CHAR ;	
+  END_STRUCT ;	
+  s_Flank : ARRAY  [0 .. 32 ] OF BOOL ;	
+END_VAR
+VAR_TEMP
+  t_Ar1_backup : DWORD ;	
+  t_Ar2_backup : DWORD ;	
+  t_True : BOOL ;	
+  t_False : BOOL ;	
+  t_Sachnumer_Gefunden : BOOL ;	
+  t_Busy : BOOL ;	
+  t_Typ_Vergl_IO : BOOL ;	
+  t_Typ_Char_1 : INT ;	
+  t_Typ_Char_2 : INT ;	
+  t_Typ_Suchen : INT ;	
+  t_Ret_Val : INT ;	
+  t_DB_Anzaige : INT ;	
+  t_DB_Daten : INT ;	
+  t_DB_Moby : INT ;	
+  t_Daten_Adr_Ohne_Pos : INT ;	
+  t_Cursor_Pos_Dec : INT ;	
+  t_Loopcounter : INT ;	
+  t_Datensatz : INT ;	
+  t_Record_1 : ANY ;	
+  t_Record_2 : ANY ;	
+  t_Sach_Vergl_IO : ARRAY  [1 .. 10 ] OF BOOL ;	
+  t_Sach_Vergl_Null : ARRAY  [1 .. 10 ] OF BOOL ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern u. Eins-/Nullmerker erzeugen
+
+      TAR1  #t_Ar1_backup; // Adressregister 1 sichern
+      TAR2  #t_Ar2_backup; // Adressregister 1 sichern
+
+      SET   ; 
+      =     #t_True; // internen '1'-Merker bilden
+
+      CLR   ; 
+      =     #t_False; // internen '0'-Merker bilden
+
+NETWORK
+TITLE =Eigenschaften vorbelegen
+
+      L     #e_DB_Daten; 
+      T     #t_DB_Daten; 
+
+      L     #e_DB_Anzaige; 
+      T     #t_DB_Anzaige; 
+
+      L     #e_DB_Moby; 
+      T     #t_DB_Moby; 
+
+
+      U     #e_Anwahl; 
+      =     #s_Anwahl; 
+
+      U     #e_Funktionsfrg; 
+      =     #s_Funktionsfrg; 
+
+      U     #e_Lesen_Erfolgreich; 
+      =     #s_Lesen_Erfolgreich; 
+
+NETWORK
+TITLE =Eingabe daten im der HMI
+
+      AUF   DB [#t_DB_Anzaige]; // DB Anzaige oeffnen
+      L     1300; // Adresse im der DB Anzaige
+      SLD   3; 
+      LAR1  ; 
+
+      U     DBX [AR1,P#0.0]; // Taste Auswahl
+      =     #s_Taste_Auswahl; 
+
+      U     DBX [AR1,P#0.1]; // Taste Bearbeitung
+      =     #s_Taste_Bearbeitung; 
+
+      U     DBX [AR1,P#0.2]; // Taste Oben
+      =     #s_Taste_Oben; 
+
+      U     DBX [AR1,P#0.3]; // Taste Unten
+      =     #s_Taste_Unten; 
+
+      U     DBX [AR1,P#0.4]; // Taste Unten (für die zukünftige Verwendung)
+      =     #s_Taste_Neu_Typ; 
+
+//    A     DBX [AR1,P#0.5]             // Taste Loeschen V0.6
+      U     #t_False; 
+      =     #s_Taste_Loeschen; 
+
+      U     DBX [AR1,P#0.6]; // Taste Manuell Uebernahme
+      =     #s_Teste_Manuell_Ueber; 
+
+      U     DBX [AR1,P#0.7]; // Taste Schreiben
+      =     #s_Taste_Schreiben; 
+
+      U     DBX [AR1,P#4.2]; // Sachnummer von Scanner 
+      =     #s_Sachnummer_von_Scanner; 
+
+      L     DBW [AR1,P#2.0]; // Cursor Position (Lesen) 
+      T     #s_Cursor_Pos; 
+
+
+NETWORK
+TITLE ============ Anzaige HMI ========================================
+
+
+
+NETWORK
+TITLE =Cursor min-/max
+
+      U     #t_True; 
+      =     L     56.0; 
+      U     L     56.0; 
+      U(    ; 
+      L     #s_Cursor_Pos; 
+      L     0; 
+      <=I   ; 
+      )     ; 
+      SPBNB _001; 
+      L     1; 
+      T     #s_Cursor_Pos; 
+_001: NOP   0; 
+      U     L     56.0; 
+      U(    ; 
+      L     #s_Cursor_Pos; 
+      L     17; 
+      >=I   ; 
+      )     ; 
+      SPBNB _002; 
+      L     16; 
+      T     #s_Cursor_Pos; 
+_002: NOP   0; 
+NETWORK
+TITLE =Ausgang Seite 1-2 und Bearbeitung
+
+      U     #t_True; 
+      =     L     56.0; 
+      U     L     56.0; 
+      U(    ; 
+      L     #s_Cursor_Pos; 
+      L     10; 
+      <I    ; 
+      )     ; 
+      =     #a_Seite_1; 
+      U     L     56.0; 
+      U(    ; 
+      L     #s_Cursor_Pos; 
+      L     9; 
+      >I    ; 
+      )     ; 
+      =     #a_Seite_2; 
+NETWORK
+TITLE =Seite Bearbeitung
+
+      U     #s_Taste_Bearbeitung; 
+      =     #a_Seite_Bearbeitung; 
+NETWORK
+TITLE =Cursor Zähler oben-/unten
+
+
+
+      U     #t_True; 
+      =     L     56.0; 
+      U     L     56.0; 
+      U     #s_Taste_Unten; 
+      FP    #s_Flank[0]; 
+      SPBNB _003; 
+      L     #s_Cursor_Pos; 
+      L     1; 
+      +I    ; 
+      T     #s_Cursor_Pos; 
+_003: NOP   0; 
+      U     L     56.0; 
+      U     #s_Taste_Oben; 
+      FP    #s_Flank[1]; 
+      SPBNB _004; 
+      L     #s_Cursor_Pos; 
+      L     1; 
+      -I    ; 
+      T     #s_Cursor_Pos; 
+_004: NOP   0; 
+NETWORK
+TITLE =Ausgabe daten im der HMI
+
+      L     #s_Cursor_Pos; 
+      T     DBW [AR1,P#2.0]; // Cursor Position  (Schreiben)
+
+      U     #s_Sachnumer_Gefunden; 
+      =     DBX [AR1,P#4.1]; // Sachnummer Gefunden (Schreiben)
+
+NETWORK
+TITLE ============ Auswahl ============================================
+
+
+
+NETWORK
+TITLE =Sachnumber Suche in der Moby
+//Auto-Suche
+      CLR   ; // Temp löschen
+      =     #t_Sach_Vergl_IO[1]; 
+      =     #t_Sach_Vergl_IO[2]; 
+      =     #t_Sach_Vergl_IO[3]; 
+      =     #t_Sach_Vergl_IO[4]; 
+      =     #t_Sach_Vergl_IO[5]; 
+      =     #t_Sach_Vergl_IO[6]; 
+      =     #t_Sach_Vergl_IO[7]; 
+      =     #t_Sach_Vergl_IO[8]; 
+      =     #t_Sach_Vergl_IO[9]; 
+      =     #t_Sach_Vergl_IO[10]; 
+      =     #t_Sach_Vergl_Null[1]; 
+      =     #t_Sach_Vergl_Null[2]; 
+      =     #t_Sach_Vergl_Null[3]; 
+      =     #t_Sach_Vergl_Null[4]; 
+      =     #t_Sach_Vergl_Null[5]; 
+      =     #t_Sach_Vergl_Null[6]; 
+      =     #t_Sach_Vergl_Null[7]; 
+      =     #t_Sach_Vergl_Null[8]; 
+      =     #t_Sach_Vergl_Null[9]; 
+      =     #t_Sach_Vergl_Null[10]; 
+      =     #t_Sachnumer_Gefunden; 
+      =     #s_Sachnumer_Gefunden; 
+      =     #s_Sachnumer_ist_Null; 
+      =     #a_Sachnummer_Gefunden; 
+      =     #a_Sachnummer_Fehlt; 
+      =     #a_Auftrag_Kopiert; 
+
+      L     0; 
+      T     #s_Cursor_Pos_Gefunden; 
+
+      U     #s_Anwahl; 
+      U     #s_Lesen_Erfolgreich; 
+      SPBN  _J21; 
+
+
+      LAR1  P##t_Record_1; // ZK Sachnummer kopieren vom Moby
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     10; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Moby; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     1635; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #Daten_Suche_1);
+
+
+      LAR1  P##t_Record_1; // ZK Typ kopieren vom Moby
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     2; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Moby; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     1658; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #Daten_Suche_2);
+
+
+
+      U     #s_Sachnummer_von_Scanner; 
+      SPBN  _J22; 
+
+      LAR1  P##t_Record_1; // ZK Sachnummer kopieren vom Scanner
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     10; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     1212; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #Daten_Suche_1);
+
+
+      LAR1  P##t_Record_1; // ZK Typ kopieren vom Scanner
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     2; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     1222; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #Daten_Suche_2);
+
+_J22: NOP   0; 
+
+NETWORK
+TITLE =ZK Typ ASCII Conversion - V0.9
+
+      L     0; 
+      T     #t_Typ_Char_1; 
+      T     #t_Typ_Char_2; 
+
+      L     #Daten_Suche_2.ZK_TYP_1; 
+      L     48; 
+      -I    ; 
+      L     L#10; 
+      *I    ; 
+      T     #t_Typ_Char_1; 
+
+      L     #Daten_Suche_2.ZK_TYP_2; 
+      L     48; 
+      -I    ; 
+      T     #t_Typ_Char_2; 
+
+      L     #t_Typ_Char_1; 
+      L     #t_Typ_Char_2; 
+      +I    ; 
+      T     #t_Typ_Suchen; 
+
+NETWORK
+TITLE =Sachnummer ist Nicht Null
+//Auto-Suche
+// Vergleichen Sachnumer Byte 1  (DB_Daten = 0)  
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_1; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[1]; 
+
+// Vergleichen Sachnumer Byte 2  (DB_Daten = 0)
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_2; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[2]; 
+
+// Vergleichen Sachnumer Byte 3  (DB_Daten = 0)
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_3; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[3]; 
+
+// Vergleichen Sachnumer Byte 4  (DB_Daten = 0)
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_4; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[4]; 
+
+// Vergleichen Sachnumer Byte 5  (DB_Daten = 0)
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_5; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[5]; 
+
+// Vergleichen Sachnumer Byte 6  (DB_Daten = 0)
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_6; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[6]; 
+
+// Vergleichen Sachnumer Byte 7  (DB_Daten = 0)
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_7; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[7]; 
+
+// Vergleichen Sachnumer Byte 8  (DB_Daten = 0)
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_8; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[8]; 
+
+// Vergleichen Sachnumer Byte 9  (DB_Daten = 0)
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_9; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[9]; 
+
+// Vergleichen Sachnumer Byte 10  (DB_Daten = 0)
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_10; 
+      L     B#16#20; 
+      ==I   ; 
+      =     #t_Sach_Vergl_Null[10]; 
+
+      U     #t_Sach_Vergl_Null[1]; 
+      U     #t_Sach_Vergl_Null[2]; 
+      U     #t_Sach_Vergl_Null[3]; 
+      U     #t_Sach_Vergl_Null[4]; 
+      U     #t_Sach_Vergl_Null[5]; 
+      U     #t_Sach_Vergl_Null[6]; 
+      U     #t_Sach_Vergl_Null[7]; 
+      U     #t_Sach_Vergl_Null[8]; 
+      U     #t_Sach_Vergl_Null[9]; 
+      U     #t_Sach_Vergl_Null[10]; 
+      =     #s_Sachnumer_ist_Null; // Sachnummer ist Null
+
+NETWORK
+TITLE =Daten Vergleichen
+//Auto-Suche
+      AUF   DB [#t_DB_Daten]; // DB Daten oeffnen
+
+      L     0; 
+      T     #t_Datensatz; 
+
+      L     16; 
+LO21: T     #t_Loopcounter; // Schleife-Start
+
+      L     #t_Datensatz; // Adresse im der DB Daten (Berechnet)
+      L     400; 
+      *I    ; 
+      SLD   3; 
+      LAR1  ; 
+
+
+// Vergleichen Sachnumer Byte 1 (DB_Moby = DB_Daten)  
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_1; 
+      L     DBB [AR1,P#2.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[1]; 
+
+// Vergleichen Sachnumer Byte 2 (DB_Moby = DB_Daten) 
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_2; 
+      L     DBB [AR1,P#3.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[2]; 
+
+// Vergleichen Sachnumer Byte 3 (DB_Moby = DB_Daten) 
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_3; 
+      L     DBB [AR1,P#4.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[3]; 
+
+// Vergleichen Sachnumer Byte 4 (DB_Moby = DB_Daten) 
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_4; 
+      L     DBB [AR1,P#5.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[4]; 
+
+// Vergleichen Sachnumer Byte 5 (DB_Moby = DB_Daten) 
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_5; 
+      L     DBB [AR1,P#6.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[5]; 
+
+// Vergleichen Sachnumer Byte 6 (DB_Moby = DB_Daten) 
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_6; 
+      L     DBB [AR1,P#7.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[6]; 
+
+// Vergleichen Sachnumer Byte 7 (DB_Moby = DB_Daten) 
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_7; 
+      L     DBB [AR1,P#8.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[7]; 
+
+// Vergleichen Sachnumer Byte 8 (DB_Moby = DB_Daten) 
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_8; 
+      L     DBB [AR1,P#9.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[8]; 
+
+// Vergleichen Sachnumer Byte 9 (DB_Moby = DB_Daten) 
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_9; 
+      L     DBB [AR1,P#10.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[9]; 
+
+// Vergleichen Sachnumer Byte 10 (DB_Moby = DB_Daten) 
+// =========================================
+      L     #Daten_Suche_1.ZK_SACHNR_10; 
+      L     DBB [AR1,P#11.0]; 
+      ==I   ; 
+      =     #t_Sach_Vergl_IO[10]; 
+
+// Vergleichen Typ Byte 1-2 (DB_Moby = DB_Daten) V0.9
+// =========================================
+      L     #t_Typ_Suchen; 
+      L     DBW [AR1,P#12.0]; 
+      ==I   ; 
+      =     #t_Typ_Vergl_IO; 
+
+      U     #t_Sach_Vergl_IO[1]; // Sachnummer Vergleichen
+      U     #t_Sach_Vergl_IO[2]; 
+      U     #t_Sach_Vergl_IO[3]; 
+      U     #t_Sach_Vergl_IO[4]; 
+      U     #t_Sach_Vergl_IO[5]; 
+      U     #t_Sach_Vergl_IO[6]; 
+      U     #t_Sach_Vergl_IO[7]; 
+      U     #t_Sach_Vergl_IO[8]; 
+      U     #t_Sach_Vergl_IO[9]; 
+      U     #t_Sach_Vergl_IO[10]; 
+      U     #t_Typ_Vergl_IO; 
+      =     #t_Sachnumer_Gefunden; // Sachnummer Gefunden
+
+      U     #t_Sachnumer_Gefunden; 
+      SPBN  _J23; 
+
+      L     DBW [AR1,P#0.0]; // Pos Gefunden kopieren
+      T     #s_Cursor_Pos_Gefunden; 
+
+_J23: U     #t_Sachnumer_Gefunden; // Set Sachnummer Gefunden
+      UN    #s_Sachnumer_ist_Null; 
+      S     #s_Sachnumer_Gefunden; 
+
+
+      L     #t_Datensatz; // Die Berechnung
+      L     1; 
+      +I    ; 
+      T     #t_Datensatz; 
+
+      L     #t_Loopcounter; // Schleife-Ende
+      LOOP  LO21; 
+
+      U     #s_Sachnumer_Gefunden; 
+      UN    #s_Sachnumer_ist_Null; 
+      =     #a_Sachnummer_Gefunden; // Sachnummer Gefunden
+
+
+      ON    #s_Sachnumer_Gefunden; 
+      O     #s_Sachnumer_ist_Null; 
+      =     #a_Sachnummer_Fehlt; // Sachnummer Felt
+
+_J21: NOP   0; 
+
+NETWORK
+TITLE =Die Berechnung der Adresse in DB (Auto-Suche)
+//Auto-Suche
+      L     0; // Speicher löschen
+      T     #s_Daten_Adresse_Gefunden; 
+      T     #t_Cursor_Pos_Dec; 
+
+
+      U     #s_Sachnumer_Gefunden; 
+      UN    #s_Sachnumer_ist_Null; 
+      SPBN  _J24; 
+
+
+      L     #s_Cursor_Pos_Gefunden; 
+      L     1; // Cursor Pos decrement 
+      -I    ; 
+      T     #t_Cursor_Pos_Dec; 
+
+
+      L     #t_Cursor_Pos_Dec; 
+      L     400; // Anzahl Single daten
+      *I    ; 
+      T     #s_Daten_Adresse_Gefunden; 
+
+
+_J24: NOP   0; 
+NETWORK
+TITLE =Kopieren von Daten auf Moby (DB_Anzaige -> DB_Moby)
+//Auto-Suche
+      U     #s_Anwahl; 
+      U     #s_Sachnumer_Gefunden; 
+      UN    #s_Sachnumer_ist_Null; 
+      U     #s_Lesen_Erfolgreich; 
+      SPBN  _J25; 
+
+      SET   ; 
+      =     #a_Auftrag_Kopiert; 
+
+// ============================================
+
+
+      LAR1  P##t_Record_1; // Alle daten kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     400; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Daten; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     #s_Daten_Adresse_Gefunden; // Daten Adresse (Berechnet)
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     400; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     0; // Daten Adresse
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+
+// ============================================
+
+
+      LAR1  P##t_Record_1; // Type Nummmer kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     2; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     12; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     2; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Moby; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     16; // Daten Adresse ZK Sachnummer
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+
+      LAR1  P##t_Record_1; // Auftrag kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     100; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     100; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     100; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Moby; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     1300; // Daten Adresse Auftrag
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+_J25: NOP   0; 
+NETWORK
+TITLE =
+
+
+
+NETWORK
+TITLE =Die Berechnung der Adresse in DB (Hand)
+//Handfunktion
+      L     0; // Speicher löschen
+      T     #s_Daten_Adresse; 
+      T     #t_Cursor_Pos_Dec; 
+
+
+      L     #s_Cursor_Pos; 
+      L     1; // Cursor Pos decrement 
+      -I    ; 
+      T     #t_Cursor_Pos_Dec; 
+
+
+      L     #t_Cursor_Pos_Dec; 
+      L     400; // Anzahl Single daten
+      *I    ; 
+      T     #s_Daten_Adresse; 
+
+NETWORK
+TITLE =Kopieren von Daten auf Speicherplatz (DB_Daten -> DB_Anzaige) 
+//Handfunktion
+      U     #s_Taste_Auswahl; 
+      U     #s_Funktionsfrg; 
+      FP    #s_Flank[3]; 
+      SPBN  _J26; 
+
+
+      LAR1  P##t_Record_1; // Alle daten kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     400; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Daten; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     #s_Daten_Adresse; // Daten Adresse (Berechnet)
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     400; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     0; // Daten Adresse
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+_J26: NOP   0; 
+NETWORK
+TITLE =Taste Auwahl-Kopieren von Daten auf Moby (DB_Anzaige -> DB_Moby)
+//Handfunktion
+      U     #s_Anwahl; 
+      U     #s_Taste_Auswahl; 
+      U     #s_Funktionsfrg; 
+      U     #s_Lesen_Erfolgreich; 
+      FP    #s_Flank[4]; 
+      SPBN  _J27; 
+
+
+      LAR1  P##t_Record_1; // ZK Sachnummer kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     10; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     2; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     10; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Moby; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     158; // Daten Adresse ZK Sachnummer
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+
+      LAR1  P##t_Record_1; // Type Nummmer kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     2; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     12; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     2; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Moby; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     16; // Daten Adresse ZK Sachnummer
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+
+      LAR1  P##t_Record_1; // Auftrag kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     100; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     100; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     100; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Moby; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     1300; // Daten Adresse Auftrag
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+
+
+_J27: NOP   0; 
+NETWORK
+TITLE ============ Bearbeitung ========================================
+
+
+
+NETWORK
+TITLE =Taste Bearbeitung  (DB_Daten -> DB_Anzaige)
+
+      U     #s_Taste_Bearbeitung; 
+      FP    #s_Flank[5]; 
+      SPBN  _J31; 
+
+
+      LAR1  P##t_Record_1; // Alle daten kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     400; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Daten; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     #s_Daten_Adresse; // Daten Adresse (Berechnet)
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     400; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     400; // Daten Adresse
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+_J31: NOP   0; 
+NETWORK
+TITLE =Taste Manuelle Übernahme (DB_Anzaige -> DB_Anzaige)
+
+      U     #s_Teste_Manuell_Ueber; 
+      U     #s_Funktionsfrg; 
+      FP    #s_Flank[6]; 
+      SPBN  _J32; 
+
+
+      LAR1  P##t_Record_1; // Sachnummer kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     10; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     802; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     10; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     402; // Daten Adresse
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+_J32: NOP   0; 
+NETWORK
+TITLE =Taste Loeschen (DB_Anzaige -> DB_Anzaige)
+//Blocked
+      U     #s_Taste_Loeschen; 
+      U     #s_Funktionsfrg; 
+      FP    #s_Flank[7]; 
+      SPBN  _J33; 
+
+
+      L     0; 
+      T     #t_Daten_Adr_Ohne_Pos; 
+
+      L     #s_Daten_Adresse; 
+      L     2; 
+      +I    ; 
+      T     #t_Daten_Adr_Ohne_Pos; 
+
+
+      LAR1  P##t_Record_1; // Daten Loeschen
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     398; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     814; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     398; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Daten; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     #t_Daten_Adr_Ohne_Pos; 
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+
+      LAR1  P##t_Record_1; // Daten kopieren (Daten aktualisieren)
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     400; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Daten; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     #s_Daten_Adresse; // Daten Adresse (Berechnet)
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     400; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     400; // Daten Adresse
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+
+_J33: NOP   0; 
+NETWORK
+TITLE =Taste Schreiben (DB_Anzaige -> DB_Anzaige)
+
+      U     #s_Taste_Schreiben; 
+      U     #s_Funktionsfrg; 
+      FP    #s_Flank[8]; 
+      SPBN  _J34; 
+
+
+      L     0; 
+      T     #t_Daten_Adr_Ohne_Pos; 
+
+      L     #s_Daten_Adresse; 
+      L     2; 
+      +I    ; 
+      T     #t_Daten_Adr_Ohne_Pos; 
+
+
+      LAR1  P##t_Record_1; // Alle daten kopieren
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     398; // Anzahl Byte
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Anzaige; // Datenbausteinnummer
+      T     LW [AR1,P#4.0]; 
+      L     402; // Daten Adresse
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      LAR2  P##t_Record_2; 
+      L     B#16#10; 
+      T     LB [AR2,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR2,P#1.0]; 
+      L     398; // Anzahl Bytes
+      T     LW [AR2,P#2.0]; 
+      L     #t_DB_Daten; // Datenbausteinnummer
+      T     LW [AR2,P#4.0]; 
+      L     #t_Daten_Adr_Ohne_Pos; 
+      SLD   3; 
+      T     LD [AR2,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR2,P#6.0]; 
+
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_Record_1,
+           RET_VAL                  := #t_Ret_Val,
+           DSTBLK                   := #t_Record_2);
+
+_J34: NOP   0; 
+NETWORK
+TITLE =Typentabelle auf MMC kopiren
+//V0.7 Coping the data to Memory Card
+      U     M    456.0; 
+      =     L     56.0; 
+      BLD   103; 
+      CALL SFC   84 (
+           REQ                      := L     56.0,
+           SRCBLK                   := DB   961,
+           RET_VAL                  := #t_Ret_Val,
+           BUSY                     := M    456.1,
+           DSTBLK                   := DB   961);
+      NOP   0; 
+NETWORK
+TITLE =Typentabelle auf MMC kopiren Freigabe
+//V0.7 Coping the data to Memory Card 
+      U     #s_Taste_Schreiben; 
+      U     #s_Funktionsfrg; 
+      FP    #s_Flank[9]; 
+      S     M    456.0; 
+      U     M    456.1; 
+      FN    #s_Flank[10]; 
+      R     M    456.0; 
+      NOP   0; 
+NETWORK
+TITLE =Adressregister zurückspielen
+
+      SET   ; 
+      SAVE  ; 
+      CLR   ; 
+
+      L     #t_Ar1_backup; 
+      LAR1  ; 
+      L     #t_Ar2_backup; 
+      LAR2  ; 
+
+
+END_FUNCTION_BLOCK
+

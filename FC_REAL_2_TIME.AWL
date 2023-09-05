@@ -1,0 +1,46 @@
+FUNCTION FC 400 : VOID
+TITLE =Converting and scaling REAL value from HMI To TIME value
+//Autor: KT
+AUTHOR : 'K.T.'
+VERSION : 0.2
+
+
+VAR_INPUT
+  IN_Val : REAL ;	
+END_VAR
+VAR_OUTPUT
+  OUT_Val : TIME ;	
+END_VAR
+VAR_TEMP
+  Val1 : REAL ;	
+  Val2 : DINT ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =
+
+// Multipling input value (REAL) *1000
+      L     #IN_Val; 
+      L     1.000000e+003; 
+      *R    ; 
+      T     #Val1; 
+
+// Converting Real to DInt value
+      L     #Val1; 
+      RND   ; 
+      T     #Val2; 
+
+// Moving DInt to Time value
+      L     #Val2; 
+      T     #OUT_Val; 
+
+NETWORK
+TITLE =End of the function
+
+      NOP   0; 
+
+      SET   ; 
+      SAVE  ; 
+
+END_FUNCTION
+

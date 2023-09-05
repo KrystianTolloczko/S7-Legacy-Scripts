@@ -1,0 +1,107 @@
+FUNCTION FC 95 : VOID
+TITLE =Finding value 1 (true) in the selected DB
+//Autor: KT
+//
+//### Attention ###
+//Please enter correct numbers of DB, StartByte and Length.
+//The function is not protected against input wrong data.
+//Failure to follow the instructions may lead to stopping the PLC device.
+AUTHOR : 'K.T.'
+VERSION : 0.2
+
+
+VAR_INPUT
+  DBNum : INT ;	//Numer of data block
+  StartByte : INT ;	//Start byte adress in DB
+  Length : INT ;	//Length value
+END_VAR
+VAR_OUTPUT
+  Found : BOOL ;	//The value was detected
+END_VAR
+VAR_TEMP
+  bTRUE : BOOL ;	//True value
+  DBTNum : WORD ;	//DBNum temp
+  TLp : INT ;	//TLoop
+  TSb : INT ;	//TStartByte
+  TFd : BOOL ;	//TFound
+  TEd : BOOL ;	//TEnd
+  TLz : BOOL ;	//TLength zero
+END_VAR
+BEGIN
+NETWORK
+TITLE =Initial value
+
+      SET   ; 
+      =     #bTRUE; 
+      U     #bTRUE; 
+
+      R     #TFd; 
+      R     #TEd; 
+      R     #TLz; 
+
+      L     0; 
+      T     #TLp; 
+      T     #TSb; 
+NETWORK
+TITLE =Main
+
+// Inputs
+      L     #DBNum; // Load DB
+      T     #DBTNum; 
+      AUF   DB [#DBTNum]; 
+
+      L     #StartByte; // Load StartByte
+      T     #TSb; 
+
+
+
+      L     0; // Check length (must to be not zero)
+      L     #Length; 
+      ==I   ; 
+      S     #TLz; 
+
+      U     #TLz; // Jump to end if length = zero
+      SPB   _End; 
+
+
+
+      L     #Length; // Load Length
+//==========================
+// Main loop
+LP:   T     #TLp; 
+
+      L     #TSb; // Load StartByte to Register
+      SLD   3; 
+      LAR1  ; 
+
+      L     DBB [AR1,P#0.0]; // Check if not TRUE
+      L     0; 
+      <>I   ; 
+      S     #TFd; 
+
+      U     #TFd; // Jump to end if value was found
+      SPB   _End; 
+
+      L     #TSb; // Increment pointer
+      INC   1; 
+      T     #TSb; 
+
+      L     #TLp; 
+      LOOP  LP; 
+//==========================
+
+
+// Output
+_End: U     #TFd; // Set output
+      =     #Found; 
+
+NETWORK
+TITLE =End of the function
+
+      NOP   0; 
+
+      SET   ; 
+      SAVE  ; 
+
+END_FUNCTION
+

@@ -1,0 +1,137 @@
+FUNCTION FC 2 : VOID
+TITLE =
+VERSION : 0.1
+
+
+VAR_INPUT
+  E_DB_Anzeige : INT ;	
+  E_Address : INT ;	
+  E_Contr_1 : BOOL ;	
+  E_Contr_2 : BOOL ;	
+  E_Contr_3 : BOOL ;	
+  E_Contr_4 : BOOL ;	
+  E_Contr_5 : BOOL ;	
+  E_Contr_6 : BOOL ;	
+  E_Contr_7 : BOOL ;	
+  E_Contr_8 : BOOL ;	
+  E_Contr_9 : BOOL ;	
+  E_Contr_10 : BOOL ;	
+  E_Contr_11 : BOOL ;	
+  E_Contr_12 : BOOL ;	
+  E_Contr_13 : BOOL ;	
+  E_Contr_14 : BOOL ;	
+  E_Contr_15 : BOOL ;	
+  E_Contr_16 : BOOL ;	
+  E_Stat_1 : BOOL ;	
+  E_Stat_2 : BOOL ;	
+  E_Stat_3 : BOOL ;	
+  E_Stat_4 : BOOL ;	
+  E_Stat_5 : BOOL ;	
+  E_Stat_6 : BOOL ;	
+  E_Stat_7 : BOOL ;	
+  E_Stat_8 : BOOL ;	
+  E_Stat_9 : BOOL ;	
+  E_Stat_10 : BOOL ;	
+  E_Stat_11 : BOOL ;	
+  E_Stat_12 : BOOL ;	
+  E_Stat_13 : BOOL ;	
+  E_Stat_14 : BOOL ;	
+  E_Stat_15 : BOOL ;	
+  E_Stat_16 : BOOL ;	
+END_VAR
+VAR_TEMP
+  T_DB : WORD ;	
+  T_Address : WORD ;		
+END_VAR
+BEGIN
+NETWORK
+TITLE =Werte
+
+      L     #E_DB_Anzeige; // Anzeige DB Nummer
+      T     #T_DB; 
+
+      L     #E_Address; // Address in DB
+      T     #T_Address; 
+
+NETWORK
+TITLE =Auswertung
+
+
+      OPN   DB [#T_DB]; 
+
+      L     #T_Address; 
+      SLD   3; 
+      LAR1  ; 
+
+// Control singals
+      A     #E_Contr_1; 
+      =     DBX [AR1,P#0.0]; 
+      A     #E_Contr_2; 
+      =     DBX [AR1,P#0.1]; 
+      A     #E_Contr_3; 
+      =     DBX [AR1,P#0.2]; 
+      A     #E_Contr_4; 
+      =     DBX [AR1,P#0.3]; 
+      A     #E_Contr_5; 
+      =     DBX [AR1,P#0.4]; 
+      A     #E_Contr_6; 
+      =     DBX [AR1,P#0.5]; 
+      A     #E_Contr_7; 
+      =     DBX [AR1,P#0.6]; 
+      A     #E_Contr_8; 
+      =     DBX [AR1,P#0.7]; 
+      A     #E_Contr_9; 
+      =     DBX [AR1,P#1.0]; 
+      A     #E_Contr_10; 
+      =     DBX [AR1,P#1.1]; 
+      A     #E_Contr_11; 
+      =     DBX [AR1,P#1.2]; 
+      A     #E_Contr_12; 
+      =     DBX [AR1,P#1.3]; 
+      A     #E_Contr_13; 
+      =     DBX [AR1,P#1.4]; 
+      A     #E_Contr_14; 
+      =     DBX [AR1,P#1.5]; 
+      A     #E_Contr_15; 
+      =     DBX [AR1,P#1.6]; 
+      A     #E_Contr_16; 
+      =     DBX [AR1,P#1.7]; 
+
+// Status singals
+      A     #E_Stat_1; 
+      =     DBX [AR1,P#2.0]; 
+      A     #E_Stat_2; 
+      =     DBX [AR1,P#2.1]; 
+      A     #E_Stat_3; 
+      =     DBX [AR1,P#2.2]; 
+      A     #E_Stat_4; 
+      =     DBX [AR1,P#2.3]; 
+      A     #E_Stat_5; 
+      =     DBX [AR1,P#2.4]; 
+      A     #E_Stat_6; 
+      =     DBX [AR1,P#2.5]; 
+      A     #E_Stat_7; 
+      =     DBX [AR1,P#2.6]; 
+      A     #E_Stat_8; 
+      =     DBX [AR1,P#2.7]; 
+      A     #E_Stat_9; 
+      =     DBX [AR1,P#3.0]; 
+      A     #E_Stat_10; 
+      =     DBX [AR1,P#3.1]; 
+      A     #E_Stat_11; 
+      =     DBX [AR1,P#3.2]; 
+      A     #E_Stat_12; 
+      =     DBX [AR1,P#3.3]; 
+      A     #E_Stat_13; 
+      =     DBX [AR1,P#3.4]; 
+      A     #E_Stat_14; 
+      =     DBX [AR1,P#3.5]; 
+      A     #E_Stat_15; 
+      =     DBX [AR1,P#3.6]; 
+      A     #E_Stat_16; 
+      =     DBX [AR1,P#3.7]; 
+      
+// Spare 1 Word
+
+END_FUNCTION
+

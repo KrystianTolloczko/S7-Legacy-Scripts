@@ -1,0 +1,160 @@
+FUNCTION FC 820 : VOID
+TITLE =Uebertragung von RFID-Daten
+//Autor: K.T. v0.5
+//
+//Function allows for exchange of values in two DBs using pointers.
+AUTHOR : 'K.T.'
+VERSION : 0.5
+
+
+VAR_INPUT
+  i_rot_en : BOOL ;	//ermöglichen Rotation
+  i_DB_Nr_1 : INT ;	//DB Daten 1
+  i_DB_Nr_2 : INT ;	//DB Daten 2
+END_VAR
+VAR_TEMP
+  t_ar1_backup : DWORD ;	
+  t_ar2_backup : DWORD ;	
+  t_true : BOOL ;	
+  t_false : BOOL ;	
+  t_ret_val : INT ;	
+  t_DB_Nr_1 : INT ;	//DB Daten 1
+  t_DB_Nr_2 : INT ;	//DB Daten 2
+  t_anzahl_byte : INT ;	
+  t_daten_teil_1 : ARRAY  [0 .. 30 ] OF BYTE ;	
+  t_daten_teil_2 : ARRAY  [0 .. 30 ] OF BYTE ;	
+  t_record : ANY ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Adressregister sichern u. Eins-/Nullmerker erzeugen
+
+      TAR1  #t_ar1_backup; // Adressregister 1 sichern
+      TAR2  #t_ar2_backup; // Adressregister 1 sichern
+
+      SET   ; 
+      =     #t_true; // internen '1'-Merker bilden
+
+      CLR   ; 
+      =     #t_false; // internen '0'-Merker bilden
+
+NETWORK
+TITLE =Datenbausteinnummern umladen
+
+      L     #i_DB_Nr_1; 
+      T     #t_DB_Nr_1; 
+
+      L     #i_DB_Nr_2; 
+      T     #t_DB_Nr_2; 
+
+      L     30; // Anzahl Byte
+      T     #t_anzahl_byte; 
+
+NETWORK
+TITLE =Aktivierung
+
+      U     #i_rot_en; 
+      SPBN  _END; 
+
+NETWORK
+TITLE =Neuen Datensatz eintragen
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     #t_anzahl_byte; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Nr_1; 
+      T     LW [AR1,P#4.0]; 
+      L     0; // Offset
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_val,
+           DSTBLK                   := #t_daten_teil_1);
+
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     #t_anzahl_byte; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Nr_2; 
+      T     LW [AR1,P#4.0]; 
+      L     0; // Offset
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_record,
+           RET_VAL                  := #t_ret_val,
+           DSTBLK                   := #t_daten_teil_2);
+
+NETWORK
+TITLE =Register schieben 1->2 und 1<-2
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     #t_anzahl_byte; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Nr_1; 
+      T     LW [AR1,P#4.0]; 
+      L     0; // Offset
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_daten_teil_2,
+           RET_VAL                  := #t_ret_val,
+           DSTBLK                   := #t_record);
+
+      LAR1  P##t_record; 
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; 
+      T     LB [AR1,P#1.0]; 
+      L     #t_anzahl_byte; 
+      T     LW [AR1,P#2.0]; 
+      L     #t_DB_Nr_2; 
+      T     LW [AR1,P#4.0]; 
+      L     0; // Offset
+      SLD   3; 
+      T     LD [AR1,P#6.0]; // AR1 auf Datenbereich legen
+      L     B#16#85; 
+      T     LB [AR1,P#6.0]; 
+
+      CALL SFC   20 (
+           SRCBLK                   := #t_daten_teil_1,
+           RET_VAL                  := #t_ret_val,
+           DSTBLK                   := #t_record);
+
+NETWORK
+TITLE =Block Ende
+
+_END: NOP   0; 
+
+NETWORK
+TITLE =Adressregister wiederherstellen
+
+      LAR1  #t_ar1_backup; // restore AR1 / Adressregister 1 wiederherstellen (Empfehlung Siemens)
+      LAR2  #t_ar2_backup; // restore AR1 / Adressregister 1 wiederherstellen (Empfehlung Siemens)
+
+      SET   ; 
+      SAVE  ; 
+END_FUNCTION
+
