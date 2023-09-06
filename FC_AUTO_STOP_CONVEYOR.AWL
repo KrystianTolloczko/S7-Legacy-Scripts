@@ -1,0 +1,142 @@
+FUNCTION_BLOCK "FB_AUTO_STOP_BAHN"
+TITLE =Nachlaufzeit Bandantriebe
+AUTHOR : KT
+VERSION : 0.2
+
+
+VAR_INPUT
+  signal_01 : BOOL ;	
+  signal_02 : BOOL ;	
+  signal_03 : BOOL ;	
+  signal_04 : BOOL ;	
+  signal_05 : BOOL ;	
+  signal_06 : BOOL ;	
+  signal_07 : BOOL ;	
+  signal_08 : BOOL ;	
+  signal_09 : BOOL ;	
+  signal_10 : BOOL ;	
+  signal_11 : BOOL ;	
+  signal_12 : BOOL ;	
+  signal_13 : BOOL ;	
+  signal_14 : BOOL ;	
+  signal_15 : BOOL ;	
+  signal_16 : BOOL ;	
+  signal_17 : BOOL ;	
+  signal_18 : BOOL ;	
+  signal_19 : BOOL ;	
+  signal_20 : BOOL ;	
+  signal_21 : BOOL ;	
+  signal_22 : BOOL ;	
+  signal_23 : BOOL ;	
+  signal_24 : BOOL ;	
+  signal_25 : BOOL ;	
+  signal_26 : BOOL ;	
+  signal_27 : BOOL ;	
+  signal_28 : BOOL ;	
+  signal_29 : BOOL ;	
+  signal_30 : BOOL ;	
+  signal_31 : BOOL ;	
+  signal_32 : BOOL ;	
+  Ein : BOOL ;	//Antriebe in Bewegung
+  Aus : BOOL ;	
+  Nachlaufzeit : TIME ;	//Nachlaufzeit Bandantrieb
+END_VAR
+VAR_OUTPUT
+  Bahn_Stop : BOOL ;	//Antriebe Stopp
+  Bahn_Ein : BOOL ;	
+END_VAR
+VAR
+  frg_input_old_1 : BYTE ;	
+  frg_input_old_2 : BYTE ;	
+  frg_input_old_3 : BYTE ;	
+  frg_input_old_4 : BYTE ;	
+  keine_Freigabe : BOOL ;	
+  FB_Nachlaufzeit : "TOF";	
+END_VAR
+VAR_TEMP
+  t_RET_VAL_int : INT ;	//Return-Wert
+  t_Fault_nr : WORD ;	//Fehlernummer
+  t_Impuls : BOOL ;	//Impuls Vergleich
+  t_Restzeit : TIME ;	
+  t_DB_NR : INT ;	
+  t_start : BOOL ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =DB Nummer ermitteln
+
+      L     DINO; 
+      T     #t_DB_NR; 
+
+
+NETWORK
+TITLE =reset
+
+      CLR   ; 
+      =     #t_start; 
+      =     #t_Impuls; 
+
+      L     0; 
+      T     #t_Fault_nr; 
+NETWORK
+TITLE =Alt/Neu- Vergleich
+
+      CALL "FC_ALT_NEU_VERGLEICH" (
+           DBNEU                    := #t_DB_NR,
+           DBB_NR_NEU               := 0,
+           DBALT                    := #t_DB_NR,
+           DBB_NR_ALT               := 12,
+           ANZAHL                   := 4,
+           S_IMPULS                 := #t_Impuls,
+           FEHL                     := #t_Fault_nr);
+      NOP   0; 
+NETWORK
+TITLE =Timmer für Nachlaufzeit
+
+      U     #Ein; 
+      U     #t_Impuls; 
+      =     L     13.0; 
+      BLD   103; 
+      CALL #FB_Nachlaufzeit (
+           IN                       := L     13.0,
+           PT                       := #Nachlaufzeit,
+           Q                        := #t_start,
+           ET                       := #t_Restzeit);
+      NOP   0; 
+NETWORK
+TITLE =Freigabe
+
+      U     #Aus; 
+      S     #keine_Freigabe; 
+      U(    ; 
+      ON    #Ein; 
+      O     ; 
+      U     #Ein; 
+      U     #t_Impuls; 
+      )     ; 
+      R     #keine_Freigabe; 
+      NOP   0; 
+NETWORK
+TITLE =Bahn aus
+
+      U     #Ein; 
+      UN    #t_start; 
+      O     #Aus; 
+      O     #keine_Freigabe; 
+      =     #Bahn_Stop; 
+NETWORK
+TITLE =Bahn ein
+
+      U     #Ein; 
+      UN    #Aus; 
+      U     #t_start; 
+      UN    #keine_Freigabe; 
+      =     #Bahn_Ein; 
+NETWORK
+TITLE =Freigabetaster / WT-Status => Altwert sichern
+
+      L     DID    0; 
+      T     DID   12; 
+      NOP   0; 
+END_FUNCTION_BLOCK
+

@@ -1,0 +1,151 @@
+FUNCTION "FC_ALT_NEU_VERGLEICH" : VOID
+TITLE =Alt- Neu -Vergleich
+//Der Baustein macht einen ALT/NEU-Vergleich von einer festgelegten Anzahl 
+//Datenbytes innerhalb eines oder zweier Datenbausteine. Wird beim Vergleich ein 
+//Unterschied festgestellt, wird für einen Zyklus das Bit S_IMPULS gesetzt.
+//Das Vorhandensein und die korrekte Länge der Datenbausteine werden überprüft.
+//
+//Folgende Fehler werden am Paramter FEHL angezeigt:
+//Fehler-Nr. 1 : DBNEU nicht vorhanden oder zu kurz
+//Fehler-Nr. 2 : DBALT nicht vorhanden oder zu kurz
+//
+//Parameter des FC's
+//------------------
+//DBNEU:          Datenbaustein mit Neuwerten
+//DBB_NR_NEU:     Startbyte der Neuwerte für den Vergleich
+//DBALT:          Datenbaustein mit Altwerten
+//DBB_NR_ALT:     Startbyte der ALtwerte für den Vergleich
+//ANZAHL:         Anzahl zu vergleichender Bytes
+//FEHL:           Fehlerwort
+AUTHOR : KT
+VERSION : 1.1
+CODE_VERSION1
+
+
+VAR_INPUT
+  DBNEU : INT ;	//DB-Neuwerte
+  DBB_NR_NEU : INT ;	//DBB Start Neuwerte
+  DBALT : INT ;	//DB-Altwerte
+  DBB_NR_ALT : INT ;	//DBB Start Altwerte
+  ANZAHL : INT ;	//Anzahl Byte für Vergleich
+END_VAR
+VAR_OUTPUT
+  S_IMPULS : BOOL ;	//Impuls Alt<>Neu
+END_VAR
+VAR_IN_OUT
+  FEHL : WORD ;	//Fehlerwort
+END_VAR
+VAR_TEMP
+  hm_neu_adr : WORD ;	//DBB-Nr. aus DBNEU
+  hm_alt_adr : WORD ;	//DBB-Nr. asu DBALT
+  hm_neuwert : WORD ;	//Neuwert-Wort
+  hm_altwert : WORD ;	//Altwert-Wort
+  hm_schleife : WORD ;	//Schleifenzähler
+  rett_val : INT ;	//Fehler FC BLKMOV
+  quelle : ANY ;	//Quellwort f. Test DB
+  dummy_blk_move : BYTE ;	//Ziel f. Test-DB
+  Neu : INT ;	
+  Alt : INT ;	
+END_VAR
+BEGIN
+NETWORK
+TITLE =Datenbausteine überprüfen
+//Datenbausteine werden überprüft, indem das letzte benötigte Byte berechnet 
+//wird. 
+//Dieses Byte (Quelle) wird in in Dummy-Byte transferiert. Wenn das Quellbyte / 
+//der Quell-DB nicht in Ordnung ist wird am Paramter rett_val ein Fehler 
+//ausgegeben. Der FB-BLKMOV wird verwendet, da in einer S7-300 der SFC 24 
+//(TEST_DB)nicht vorhanden ist. 
+      L     #DBNEU; // DB vorbelegen
+      T     #Neu; 
+
+      L     #DBALT; // DB vorbelegen
+      T     #Alt; 
+
+//----------------------------------------------------------
+
+      U     #S_IMPULS; 
+      R     #S_IMPULS; // Änderungskennung löschen
+      L     0; 
+      T     #FEHL; 
+      T     #rett_val; 
+      LAR1  P##quelle; // Anypointer Quelle
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; // Kennung Byteübertragung
+      T     LB [AR1,P#1.0]; 
+      L     1; // QLAE 1 Byte fest   
+      T     LW [AR1,P#2.0]; 
+      L     #DBNEU; // Q-DB
+      T     LW [AR1,P#4.0]; 
+      L     #DBB_NR_NEU; // 1. DW
+      L     #ANZAHL; // Q-ANF 
+      +     -1; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+      CALL "BLKMOV" (
+           SRCBLK                   := #quelle,
+           RET_VAL                  := #rett_val,//Returnwert wenn DB Neuwert nicht I.O.
+           DSTBLK                   := #dummy_blk_move);//---------------------------------
+      L     #rett_val; 
+      L     W#16#0; 
+      <>I   ; 
+      L     B#16#1; // DB Neuwert nicht vorhanden oder zu kurz
+      SPB   feh1; // -----------------------------------
+      LAR1  P##quelle; // Anypointer Quelle
+      L     B#16#10; 
+      T     LB [AR1,P#0.0]; 
+      L     B#16#2; // Kennung Byteübertragung
+      T     LB [AR1,P#1.0]; 
+      L     1; // QLAE 1 Byte fest   
+      T     LW [AR1,P#2.0]; 
+      L     #DBALT; // Q-DB
+      T     LW [AR1,P#4.0]; 
+      L     #DBB_NR_ALT; // 1. DBB
+      L     #ANZAHL; // Q-ANF 
+      +     -1; 
+      +I    ; 
+      SLD   3; 
+      T     LD [AR1,P#6.0]; 
+      L     B#16#84; 
+      T     LB [AR1,P#6.0]; 
+      CALL "BLKMOV" (
+           SRCBLK                   := #quelle,
+           RET_VAL                  := #rett_val,//Returnwert wenn DB Altwerte nicht I.O.
+           DSTBLK                   := #dummy_blk_move);//---------------------------------
+      L     #rett_val; 
+      L     W#16#0; 
+      <>I   ; 
+      L     B#16#2; // DB Altwerte nicht vorhanden oder zu kurz
+      SPB   feh1; // ------------------------------------
+NETWORK
+TITLE =Alt/Neu Vergleich
+
+      L     #DBB_NR_NEU; // DW-Nr. Beginn Neuwerte
+      SLW   3; // Pointer 
+      LAR1  ; 
+      L     #DBB_NR_ALT; // DW-Nr. Beginn Altwerte
+      SLW   3; // Pointer
+      LAR2  ; 
+      L     #ANZAHL; 
+schl: T     #hm_schleife; // Schleifenzähler
+      AUF   DB [#Alt]; 
+      L     DBB [AR2,P#0.0]; // ALTwert laden
+      AUF   DB [#Neu]; 
+      L     DBB [AR1,P#0.0]; // NEUwert laden
+      ==I   ; 
+      SPB   incr; // wenn alt = neu ==> Sprung incr
+      S     #S_IMPULS; // Sendeimpuls für gesamten Bereich
+      AUF   DB [#Alt]; 
+      T     DBB [AR2,P#0.0]; // neuwert...merken in Altwert-DB
+incr: +AR1  P#1.0; 
+      +AR2  P#1.0; 
+      L     #hm_schleife; 
+      LOOP  schl; 
+      BEA   ; 
+feh1: T     #FEHL; // Fehlerausgabe
+END_FUNCTION
+
